@@ -16,6 +16,9 @@ Sem biblioteca de CSS ou de JS além do Plotly: o CSS e o JS (poucas linhas, só
 para animar a entrada e destacar o item do menu) ficam dentro do arquivo.
 O tema escuro segue a configuração do sistema (prefers-color-scheme).
 
+No fim da página, a seção "Dados completos" tem uma aba para cada um dos dez marts (inclusive o
+historico_familiar, que não tem gráfico): as tabelas inteiras, como estão no banco, só formatadas.
+
 Clicar numa barra abre a tela de detalhe daquele item (rótulo, valor, a dica do gráfico e a lista de todos os
 itens do gráfico), com os botões Voltar e Início. Os dados dessa tela são os mesmos que o gráfico já desenha
 (rótulo, texto da barra e dica), copiados para um JSON dentro da página: nada é calculado aqui.
@@ -26,6 +29,8 @@ import sys
 from datetime import datetime
 from html import escape
 from pathlib import Path
+
+import pandas as pd
 
 import painel
 
@@ -167,6 +172,26 @@ footer{max-width:1320px;margin:0 auto;padding:28px clamp(14px,3vw,32px) 48px;col
 .tabela td:last-child,.tabela th:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .tabela tr.sel td{background:var(--realce);font-weight:700;color:var(--acento)}
 #det-nota{margin:16px 2px 0;color:var(--suave);font-size:.88rem}
+.abas{display:flex;gap:6px;overflow-x:auto;padding:6px;background:var(--superficie);border:1px solid var(--borda);
+  border-radius:999px;scrollbar-width:none;box-shadow:var(--sombra)}
+.abas::-webkit-scrollbar{display:none}
+.aba{border:0;background:transparent;color:var(--suave);font:inherit;font-size:.88rem;font-weight:600;
+  padding:9px 16px;border-radius:999px;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s}
+.aba:hover{background:var(--realce);color:var(--texto)}
+.aba[aria-selected="true"]{background:var(--hero);color:#fff}
+.aba:focus-visible{outline:3px solid var(--acento);outline-offset:2px}
+.painel-aba{margin-top:20px}
+.cab-tabela h3{margin:0 0 4px;font-size:1.2rem;letter-spacing:-.02em}
+.cab-tabela p{margin:0 0 6px;color:var(--suave);font-size:.94rem;max-width:80ch}
+.cab-tabela .origem{max-width:none;font-size:.8rem;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin-bottom:14px}
+.rolagem{overflow-x:auto;border:1px solid var(--borda);border-radius:var(--raio);background:var(--superficie);
+  box-shadow:var(--sombra)}
+.grade{width:100%;border-collapse:collapse;font-size:.9rem;font-variant-numeric:tabular-nums}
+.grade th{padding:12px 16px;text-align:left;background:var(--realce);white-space:nowrap;font-weight:600}
+.grade th code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.78rem;color:var(--acento)}
+.grade td{padding:11px 16px;border-top:1px solid var(--borda);white-space:nowrap}
+.grade .dir{text-align:right}
+.grade tbody tr:hover td{background:var(--realce)}
 /* Plotly desenha em SVG com cores fixas: no tema escuro, as cores do texto e da grade são trocadas aqui */
 @media (prefers-color-scheme:dark){
   .js-plotly-plot .plotly text{fill:var(--texto)!important}
@@ -285,6 +310,26 @@ JS = """
     });
   });
 
+  /* abas da seção Dados completos (sem JS, todas as tabelas aparecem uma abaixo da outra) */
+  var abas = Array.prototype.slice.call(document.querySelectorAll('.aba'));
+  function ativar(aba, foco){
+    abas.forEach(function(a){
+      var on = a === aba;
+      a.setAttribute('aria-selected', on ? 'true' : 'false'); a.tabIndex = on ? 0 : -1;
+      document.getElementById(a.getAttribute('aria-controls')).hidden = !on;
+    });
+    if (foco) aba.focus();
+  }
+  abas.forEach(function(a, i){
+    a.addEventListener('click', function(){ ativar(a, false); });
+    a.addEventListener('keydown', function(e){
+      var novo = {ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: abas.length - 1}[e.key];
+      if (novo === undefined) return;
+      e.preventDefault(); ativar(abas[(novo + abas.length) % abas.length], true);
+    });
+  });
+  if (abas.length) ativar(abas[0], false);
+
   /* clique em uma barra */
   function ligar(){
     var faltam = 0;
@@ -306,6 +351,28 @@ JS = """
   });
 })();
 """
+
+# (mart, texto da aba, o que uma linha é). A ordem é a dos arquivos em sql/marts/ (01 a 10).
+TABELAS = [
+    ("respostas_por_continente", "Continentes",
+     "Uma linha por continente (o do país informado). 'sem_cadastro' é país que não está na tabela de países."),
+    ("tratamento_por_genero", "Gênero",
+     "Uma linha por grupo de gênero. Grupos com poucas respostas aparecem aqui, mesmo ficando fora do gráfico."),
+    ("historico_familiar", "Histórico familiar",
+     "Uma linha por resposta a 'tem histórico familiar de doença mental?'. Este mart não tem gráfico na página."),
+    ("interferencia_trabalho", "Interferência no trabalho",
+     "Uma linha por resposta a 'a condição interfere no seu trabalho?'. 'sem_resposta' são as respostas em branco."),
+    ("apoio_empregador", "Apoio do empregador",
+     "Uma linha por pergunta de apoio × resposta. O denominador é o total de respostas: 'Não sei' conta."),
+    ("tamanho_empresa", "Tamanho da empresa",
+     "Uma linha por faixa de número de funcionários, como as faixas vieram da pesquisa."),
+    ("consequencias_percebidas", "Consequências",
+     "Uma linha por tipo de saúde. Receio e disposição são perguntas diferentes: 'Sim' não quer dizer o mesmo."),
+    ("ranking_paises", "Países", "Uma linha por país com 20 respostas ou mais."),
+    ("faixa_etaria", "Faixa etária",
+     "Uma linha por faixa de idade. 'sem_idade_valida' são as respostas com idade fora de 16 a 80."),
+    ("kpis", "Indicadores gerais", "Uma única linha: os seis cartões do topo da página."),
+]
 
 ICONE_INICIO = (
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '
@@ -372,6 +439,62 @@ def _pontos(fig) -> list[dict]:
         {"rotulo": str(r).replace("<br>", " · "), "valor": str(t), "detalhe": str(d)}
         for r, t, d in zip(rotulos, textos, dicas, strict=True)
     ]
+
+
+def _celula(coluna: str, valor) -> tuple[str, str]:
+    """(classe, texto) de uma célula da tabela. Só formata: pct_* com %, contagens com milhar, nulo vira —."""
+    if isinstance(valor, str):
+        return "", valor
+    if coluna.startswith("pct_"):
+        return "dir", painel.pct(valor)
+    if pd.api.types.is_integer(valor) or coluna in ("respondentes", "ordem", "posicao"):
+        return "dir", painel.inteiro(valor)
+    return "dir", painel.decimal(valor)
+
+
+def _tabela(df: pd.DataFrame) -> str:
+    colunas = list(df.columns)
+    ordenado = df
+    for chave in ("posicao", "ordem"):  # ordenar é permitido; apoio_empregador (tem 'pergunta') fica como vem
+        if chave in colunas and "pergunta" not in colunas:
+            ordenado = df.sort_values(chave, kind="stable")
+            break
+    cabecalho = "".join(
+        f'<th class="{"dir" if pd.api.types.is_numeric_dtype(df[c]) else ""}"><code>{escape(c)}</code></th>'
+        for c in colunas
+    )
+    linhas = []
+    for _, linha in ordenado.iterrows():
+        celulas = []
+        for c in colunas:
+            classe, texto = _celula(c, linha[c])
+            celulas.append(f'<td class="{classe}">{escape(texto)}</td>')
+        linhas.append(f"<tr>{''.join(celulas)}</tr>")
+    return (
+        f'<div class="rolagem"><table class="grade"><thead><tr>{cabecalho}</tr></thead>'
+        f'<tbody>{"".join(linhas)}</tbody></table></div>'
+    )
+
+
+def _abas(dados: dict) -> str:
+    botoes, paineis = [], []
+    for n, (mart, nome, descricao) in enumerate(TABELAS, start=1):
+        df = dados[mart]
+        ativa = n == 1
+        botoes.append(
+            f'<button type="button" role="tab" class="aba" id="aba-{mart}" aria-controls="painel-{mart}" '
+            f'aria-selected="{"true" if ativa else "false"}" tabindex="{0 if ativa else -1}">'
+            f"{escape(nome)}</button>"
+        )
+        total = len(df)
+        paineis.append(
+            f'<div role="tabpanel" class="painel-aba" id="painel-{mart}" aria-labelledby="aba-{mart}">'
+            f'<div class="cab-tabela"><h3>{n:02d} · {escape(nome)}</h3><p>{escape(descricao)}</p>'
+            f'<p class="origem">marts.{escape(mart)} · sql/marts/{n:02d}_{escape(mart)}.sql · '
+            f'{painel.inteiro(total)} {"linha" if total == 1 else "linhas"}</p></div>{_tabela(df)}</div>'
+        )
+    lista = f'<div class="abas" role="tablist" aria-label="Tabelas dos indicadores">{"".join(botoes)}</div>'
+    return lista + "".join(paineis)
 
 
 def _tema(fig) -> None:
@@ -442,7 +565,8 @@ def montar_html(dados: dict, agora: datetime | None = None) -> str:
         '<header class="topo"><nav>'
         '<a class="marca" href="#topo" data-home><i></i><span>Saúde mental em tech</span></a>'
         f'<div class="menu"><a class="menu-home" href="#topo" data-home>{ICONE_INICIO}<span>Início</span></a>'
-        f'<a href="#numeros">Números</a>{menu}<a href="#sobre">Sobre os dados</a></div>'
+        f'<a href="#numeros">Números</a>{menu}<a href="#dados">Dados completos</a>'
+        '<a href="#sobre">Sobre os dados</a></div>'
         "</nav></header>"
         f"{DETALHE}"
         '<section class="hero" id="topo"><div class="hero-in">'
@@ -461,7 +585,12 @@ def montar_html(dados: dict, agora: datetime | None = None) -> str:
         '<div class="aviso-rede" id="sem-plotly" hidden>Os gráficos precisam de internet para carregar a '
         "biblioteca Plotly. Conecte-se e recarregue a página.</div>"
         f'{"".join(faixas)}'
-        '<section class="bloco" id="sobre"><div class="bloco-cab revela"><span class="num">04</span>'
+        '<section class="bloco" id="dados"><div class="bloco-cab revela"><span class="num">04</span>'
+        "<h2>Dados completos</h2>"
+        '<p class="sub">As tabelas inteiras dos dez indicadores, como estão no banco (só formatadas). '
+        "Inclui o que não cabe nos gráficos.</p></div>"
+        f'<div class="revela">{_abas(dados)}</div></section>'
+        '<section class="bloco" id="sobre"><div class="bloco-cab revela"><span class="num">05</span>'
         "<h2>Sobre os dados</h2>"
         '<p class="sub">Como ler os gráficos desta página.</p></div>'
         f'<div class="sobre">{sobre}</div></section></main>'

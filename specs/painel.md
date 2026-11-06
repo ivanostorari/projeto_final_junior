@@ -40,6 +40,9 @@ troca o nome de uma coluna por um rótulo, formata texto e desenha. Número novo
     entrada e item ativo do menu). O título de cada gráfico sai de dentro do Plotly e vai para a página, porque o
     Plotly não quebra título comprido e o corta no celular. Sem internet o Plotly não carrega: a página avisa.
     Os textos de apoio dizem o que está medido, nunca o que o resultado "prova" (decisão 8).
+    **Dados completos:** no fim da página, uma aba para cada um dos dez marts (inclusive `historico_familiar`, que não
+    tem gráfico), com a tabela inteira, como está no banco: nome real das colunas, percentuais com `%` e vírgula,
+    milhar com ponto, nulo como `—`, e a origem (`sql/marts/NN_nome.sql`). Só formata e ordena; não calcula.
     **Detalhe por clique:** clicar numa barra abre a tela de detalhe daquele item (rótulo, valor, a dica do gráfico
     e a lista de todos os itens do gráfico, com o clicado destacado). A tela tem **Voltar** (volta ao mesmo ponto da
     página; o botão voltar do navegador e a tecla Esc fazem o mesmo) e **Início** (volta ao topo); o menu também
@@ -57,5 +60,6 @@ troca o nome de uma coluna por um rótulo, formata texto e desenha. Número novo
 - Busca por `groupby`, `.sum(`, `.mean(`, `.merge(` em `painel.py`, `app.py` e `relatorio.py` não encontra nada.
 - Com o painel de pé, `uv run python -m pipeline.marts` roda sem erro de lock.
 - `relatorio.html` abre com dois cliques, sem Python, e tem menos de 200 KB.
+- No relatório, a seção **Dados completos** tem dez abas, e cada tabela tem exatamente as linhas do mart.
 - No relatório, clicar numa barra abre o detalhe; **Voltar** devolve a página à mesma posição de rolagem e **Início** leva ao topo.
 - No relatório, nenhum rótulo é cortado e a página não rola para o lado em 1440, 900 e 390 pixels de largura, nos temas claro e escuro.

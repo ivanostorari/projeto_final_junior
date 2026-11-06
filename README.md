@@ -73,8 +73,8 @@ Precisa do [uv](https://docs.astral.sh/uv/) (ele baixa o Python e as dependênci
 `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"` e **abra um terminal novo** depois.
 
 ```bash
-git clone https://github.com/ivanostorari/projeto_final_empregadados_junior.git
-cd projeto_final_empregadados_junior
+git clone https://github.com/ivanostorari/projeto_final_junior.git
+cd projeto_final_junior
 
 uv sync                                   # instala as dependências (cria .venv)
 
@@ -105,7 +105,7 @@ Saída esperada de `executar.py`: `raw.respostas 1.259` e `raw.paises 250` (tota
 ## Estrutura
 
 ```
-projeto_final_empregadados_junior/
+projeto_final_junior/
 ├── raw/                    survey.csv (OSMI, intocado), paises.csv e ORIGEM.md (crédito e licença)
 ├── preparar_paises.py      gera raw/paises.csv (e registra por que ISO2 ficou de fora)
 ├── pipeline/
@@ -335,7 +335,7 @@ FROM marts.tratamento_por_genero;
 | Duas tabelas ou mais, ligadas por uma chave (JOIN) | `respostas` × `paises` pelo nome do país; JOIN em `sql/marts/01_*.sql` e `08_*.sql` |
 | Três camadas, e na bruta nada é alterado | `raw` → `refined` → `marts` (seção "Etapas"); `pipeline/ingestao.py` proíbe converter, descartar ou corrigir |
 | Testes unitários com dado inventado, sem abrir o banco do projeto | `test/` (149 testes, `uv run pytest --cov`); `specs/testes.md` |
-| Repositório público no GitHub pessoal | <https://github.com/ivanostorari/projeto_final_empregadados_junior> |
+| Repositório público no GitHub pessoal | <https://github.com/ivanostorari/projeto_final_junior> |
 | Histórico: um commit por etapa, com mensagem | `git log --oneline` (spec e código de cada etapa em commits separados; o primeiro commit é a exceção, veja a última seção) |
 | Dashboard opcional, lendo só dos marts, sem cálculo na tela | `painel.py` + `app.py` + `relatorio.py`; `specs/painel.md` |
 | Cada indicador tem um `.sql` de onde saiu; cada decisão tem um motivo escrito | `sql/marts/*.sql` (10 arquivos) e `specs/*.md` |
@@ -345,7 +345,7 @@ FROM marts.tratamento_por_genero;
 
 - **`main` é a versão estável.** Mudança nova entra por uma **branch separada** (`feat/...`, `docs/...`, `fix/...`) e volta para a `main` por **pull request**, mesmo trabalhando sozinho: o pull request deixa registrado o que mudou e por quê, e dá o momento de reler antes de juntar.
 - **Um commit por etapa**, com mensagem que diz o que mudou (`feat:`, `docs:`, `test:`, `chore:`).
-- **Honestidade sobre o histórico:** as etapas 1 a 14 (os 14 primeiros commits) foram feitas direto na `main`. A prática de branch + pull request vale a partir da etapa 15.
+- **Honestidade sobre o histórico:** os 15 primeiros commits (as etapas 1 a 14 e a primeira versão do relatório HTML) foram feitos direto na `main`. A prática de branch + pull request vale a partir daqui.
 - Nunca se reescreve histórico já publicado (`git push --force`).
 
 ## Quando quebrar

@@ -6,6 +6,8 @@ um comentário dizendo por que ela existe. O valor esperado sai da conta feita
 sobre essa entrada, nunca de um número medido no dado real.
 """
 
+import csv
+
 import duckdb
 import pytest
 
@@ -101,6 +103,26 @@ RESPOSTAS = [
 def popular_raw(con, respostas=None, paises=None) -> None:
     criar_raw(con, "respostas", RESPOSTAS if respostas is None else respostas)
     criar_raw(con, "paises", PAISES if paises is None else paises)
+
+
+def escrever_csv(caminho, colunas: list[str], linhas: list[dict]) -> None:
+    """Escreve um CSV de entrada (valor None vira campo vazio, que a ingestão lê como nulo)."""
+    with caminho.open("w", encoding="utf-8", newline="") as arquivo:
+        escritor = csv.DictWriter(arquivo, fieldnames=colunas)
+        escritor.writeheader()
+        escritor.writerows(linhas)
+
+
+def respostas_do_pipeline() -> list[dict]:
+    """As 8 respostas do conftest + 20 geradas (EUA, cada uma com seu horário), para o mart 08 (mínimo de 20 por país) não vir vazio."""
+    return RESPOSTAS + [resposta(Timestamp=f"2015-01-01 00:00:{i:02d}") for i in range(20)]
+
+
+def escrever_entradas(pasta, respostas=None, paises=None) -> None:
+    """survey.csv e paises.csv INVENTADOS em `pasta` (nunca os de raw/)."""
+    pasta.mkdir(parents=True, exist_ok=True)
+    escrever_csv(pasta / "survey.csv", COLUNAS_SURVEY, respostas_do_pipeline() if respostas is None else respostas)
+    escrever_csv(pasta / "paises.csv", COLUNAS_PAISES, PAISES if paises is None else paises)
 
 
 @pytest.fixture

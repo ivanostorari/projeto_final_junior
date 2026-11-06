@@ -23,6 +23,7 @@ import duckdb
 RAIZ = Path(__file__).resolve().parent.parent
 PASTA_RAW = RAIZ / "raw"
 CAMINHO_BANCO = RAIZ / "saude_mental.duckdb"
+PASTA_LOGS = RAIZ / "logs"
 
 
 def conectar() -> duckdb.DuckDBPyConnection:

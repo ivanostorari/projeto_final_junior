@@ -4,15 +4,27 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 import painel
+from pipeline import orquestrador
 from test.test_painel import dados_inventados
 
 
 @pytest.fixture(autouse=True)
-def limpar_cache():
+def limpar_cache(monkeypatch, tmp_path):
     import streamlit as st
     st.cache_data.clear()
+    st.cache_resource.clear()
+    # banco "existente" por padrão: os testes não rodam o pipeline de verdade
+    banco = tmp_path / "saude_mental.duckdb"
+    banco.write_text("")
+    monkeypatch.setattr(painel, "CAMINHO_BANCO", banco)
     yield
     st.cache_data.clear()
+    st.cache_resource.clear()
+
+
+class ExecucaoFalsa:
+    def __init__(self, status, etapas=()):
+        self.status, self.etapas = status, list(etapas)
 
 
 def abrir(monkeypatch, ler):
@@ -50,3 +62,34 @@ def test_botao_recarregar_le_de_novo(monkeypatch):
     app.button[0].click().run()
     assert len(chamadas) == 2
     assert not app.exception
+
+
+def test_sem_banco_a_pagina_roda_o_pipeline_uma_vez_e_depois_mostra_os_dados(monkeypatch, tmp_path):
+    painel.CAMINHO_BANCO.unlink()
+    chamadas = []
+
+    def rodar(**kwargs):
+        chamadas.append(kwargs)
+        painel.CAMINHO_BANCO.write_text("")
+        return ExecucaoFalsa("ok")
+
+    monkeypatch.setattr(orquestrador, "rodar", rodar)
+    app = abrir(monkeypatch, dados_inventados)
+    app.run()
+    assert not app.exception and len(app.metric) == 6
+    assert chamadas == [{"caminho_banco": painel.CAMINHO_BANCO}]  # só na primeira abertura
+
+
+def test_com_banco_existente_o_pipeline_nao_roda(monkeypatch):
+    monkeypatch.setattr(orquestrador, "rodar", lambda **k: pytest.fail("não deveria rodar"))
+    app = abrir(monkeypatch, dados_inventados)
+    assert not app.exception and len(app.metric) == 6
+
+
+def test_falha_ao_preparar_os_dados_mostra_a_etapa_e_para(monkeypatch):
+    painel.CAMINHO_BANCO.unlink()
+    falha = ExecucaoFalsa("falhou", [{"etapa": "2 · transformação", "status": "falhou"}])
+    monkeypatch.setattr(orquestrador, "rodar", lambda **k: falha)
+    app = abrir(monkeypatch, dados_inventados)
+    assert not app.exception and len(app.metric) == 0
+    assert "2 · transformação" in app.error[0].value

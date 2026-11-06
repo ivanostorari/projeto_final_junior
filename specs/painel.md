@@ -11,6 +11,7 @@ troca o nome de uma coluna por um rótulo, formata texto e desenha. Número novo
 
 - `painel.py`: leitura, formatação e gráficos. **Não importa Streamlit.**
 - `app.py`: a página Streamlit, só arruma na tela o que o `painel.py` entrega.
+  Exceção única, para a publicação online: se `saude_mental.duckdb` não existe, `app.py` chama `orquestrador.rodar()` uma vez (cache de recurso) e, se falhar, mostra a etapa que falhou e para. Não calcula nada; só prepara o banco.
 - `relatorio.py`: gera `relatorio.html`, o mesmo painel congelado em um arquivo.
 
 ## Decisões

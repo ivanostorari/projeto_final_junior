@@ -311,6 +311,7 @@ Cada linha tem o número que a tela mostra, um número **errado** que um erro co
 - Aviso de que é uma amostra e não um diagnóstico, com o CVV (188) para quem se reconhecer no assunto.
 - Números no padrão brasileiro (milhar com ponto, decimal com vírgula), independente do locale da máquina.
 - **Relatório HTML** (`relatorio.py` → `relatorio.html`): o mesmo painel numa página única, com menu, tema claro e escuro e layout que se adapta ao celular. **Clicar numa barra abre o detalhe** daquele item, com os botões **Voltar** (volta ao mesmo ponto da página) e **Início**. A seção **Dados completos** tem uma aba com a tabela inteira de cada um dos 10 marts. Nada é calculado na página: o detalhe e as tabelas copiam o que os marts já têm. Precisa de internet só para os gráficos (Plotly via CDN).
+- **Publicado online (Streamlit Community Cloud).** O banco não vai ao Git; por isso, quando `saude_mental.duckdb` não existe (ambiente recém-criado), o `app.py` roda o pipeline inteiro a partir de `raw/` na primeira abertura (menos de 1 segundo) e só então mostra os dados. Se o pipeline falhar, a página diz qual etapa falhou. Para publicar: share.streamlit.io → *Create app* → repositório `ivanostorari/projeto_final_junior`, branch `main`, arquivo `app.py`, Python 3.13 em *Advanced settings*. A Vercel não serve para o Streamlit (ele precisa de um servidor Python rodando); ela serve para o `relatorio.html`, que é uma página estática.
 - Botão **Recarregar dados** limpa o cache depois de rodar o pipeline de novo. Se o banco ou algum mart faltar, a página mostra o que falta e o comando para gerar.
 
 ## Operação: execução, rastreabilidade e qualidade
@@ -339,18 +340,18 @@ SELECT * FROM controle.qualidade WHERE NOT aprovada;
 
 ```bash
 uv run pytest --cov                # comando oficial: todos os testes, com cobertura (mínimo exigido: 95%)
-uv run pytest -m "not integracao"  # só os testes unitários (187)
+uv run pytest -m "not integracao"  # só os testes unitários (190)
 uv run pytest -m integracao        # só os testes de integração (31): rodam o pipeline completo
 uv run ruff check .                # lint
 ```
 
 Os testes ficam em `test/`, um arquivo por módulo; os de **integração** (pipeline completo em pasta temporária) ficam separados em `test/integracao/` e marcados com `integracao`. **Nenhum teste abre `saude_mental.duckdb` nem lê `raw/`** — e isso é **imposto, não só combinado**: um guarda automático (`isolar_do_projeto`, em `test/conftest.py`) faz qualquer teste que tente abrir o banco do projeto ou ler `raw/` falhar na hora, e `test/test_isolamento.py` prova que o guarda funciona: cada um constrói um banco temporário com **dados inventados** (oito respostas e seis países, em `test/conftest.py`, cada linha com o motivo de existir escrito; os testes de integração acrescentam 20 respostas geradas para o ranking de países ter o mínimo de 20 por país). Nenhum texto de resposta real aparece nos testes. Os valores esperados dos marts foram calculados **à mão** sobre essas linhas. Cobrem as regras das specs: conversões e formatos rejeitados, nulos, "nada é gravado" quando algo falha, `ROLLBACK`, idempotência, o `JOIN` que não muda a contagem, o corte de 20 respostas (EUA, Reino Unido e Canadá com 20; Alemanha com 19 fica de fora por **uma** resposta), a formatação brasileira dos números, o painel, o relatório, o `ver_marts.py` e o `conferir.py`. Os testes de **integração** (`test_orquestrador.py`) rodam o pipeline completo, CSV → Bronze → Prata → Ouro, com os `.sql` reais e CSVs inventados: contagens por camada, **idempotência** (duas execuções, mesmo resultado), **simulação de falha no meio** (banco anterior intacto, nada temporário sobrando), arquivos ausentes, vazios, só com cabeçalho, em outra codificação, com coluna faltando, linha quebrada, linhas repetidas e chave duplicada, bloqueio da Prata e da Ouro por qualidade, e a ausência de comentários nos logs. `test_contrato.py` e `test_qualidade.py` cobrem cada regra do contrato e da qualidade (passa no dado bom, falha no dado adulterado).
 
-Resultado: **218 testes** (187 unitários + 31 de integração), cobertura total de **98,95%** e `ruff` sem erros. O mínimo obrigatório é **95%** (`fail_under` no `pyproject.toml`): abaixo disso o `pytest --cov` termina com erro. A medição cobre todo o código do projeto (`source = ["."]`), exceto `test/` e `preparar_paises.py` (script que roda uma vez). Regra e dados inventados em `specs/testes.md`.
+Resultado: **221 testes** (190 unitários + 31 de integração), cobertura total de **98,97%** e `ruff` sem erros. O mínimo obrigatório é **95%** (`fail_under` no `pyproject.toml`): abaixo disso o `pytest --cov` termina com erro. A medição cobre todo o código do projeto (`source = ["."]`), exceto `test/` e `preparar_paises.py` (script que roda uma vez). Regra e dados inventados em `specs/testes.md`.
 
 **Integração contínua.** O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda a cada pull request e a cada push na `main`, num ambiente limpo (Python 3.13, dependências do `uv.lock` com `uv sync --locked`): `ruff check` e `pytest --cov`. Se qualquer passo falhar, o workflow falha.
 
-**Reprodução em ambiente limpo.** Em 06/11/2026, num clone novo do repositório, com Python 3.13: `uv sync --locked`, `ruff` sem erros e `uv run pytest --cov` com **218 testes passando** e cobertura de 98,95%. Não há testes pulados nem marcadores que excluam testes.
+**Reprodução em ambiente limpo.** Em 06/11/2026, num clone novo do repositório, com Python 3.13: `uv sync --locked`, `ruff` sem erros e `uv run pytest --cov` com **221 testes passando** e cobertura de 98,97%. Não há testes pulados nem marcadores que excluam testes.
 
 ## Explorando com SQL
 
@@ -369,7 +370,7 @@ FROM marts.tratamento_por_genero;
 | Fonte escolhida por você, com link e licença | seção "Fonte e licença" e `raw/ORIGEM.md` |
 | Duas tabelas ou mais, ligadas por uma chave (JOIN) | `respostas` × `paises` pelo nome do país; JOIN em `sql/marts/01_*.sql` e `08_*.sql` |
 | Três camadas, e na bruta nada é alterado | `raw` → `refined` → `marts` (seção "Etapas"); `pipeline/ingestao.py` proíbe converter, descartar ou corrigir |
-| Testes unitários com dado inventado, sem abrir o banco do projeto | `test/` (218 testes, `uv run pytest --cov`; unitários e integração separados); `specs/testes.md` |
+| Testes unitários com dado inventado, sem abrir o banco do projeto | `test/` (221 testes, `uv run pytest --cov`; unitários e integração separados); `specs/testes.md` |
 | Repositório público no GitHub pessoal | <https://github.com/ivanostorari/projeto_final_junior> |
 | Histórico: um commit por etapa, com mensagem | `git log --oneline` (spec e código de cada etapa em commits separados) |
 | Dashboard opcional, lendo só dos marts, sem cálculo na tela | `painel.py` + `app.py` + `relatorio.py`; `specs/painel.md` |
@@ -448,12 +449,12 @@ Problemas que apareceram durante a construção, como cada um foi descoberto e o
 10. **Versão do Python no `uv init --bare`.** Ele grava em `requires-python` a versão do Python **da máquina**; se não for a 3.13, o `uv venv` só avisa e o `uv add` seguinte **recria o `.venv` com outra versão, sem perguntar**. *Descoberto reproduzindo* com `requires-python = ">=3.14"`. Forma segura: `uv init --bare --python 3.13`.
 
 11. **Licença do pacote de países.** A tabela de países vinha documentada como MIT. *Descoberto* abrindo os metadados e o `LICENSE` do `country_converter` 1.3.2: é **GPL-3.0**. Corrigido em todos os documentos; o `paises.csv` passa a ser tratado como GPL-3.0, à parte do código (MIT), como descrito em `raw/ORIGEM.md`.
-12. **Contagem de testes divergente (133 × 149).** O README citava 133 testes numa conferência e 149 na máquina local. *Reproduzido* em clone novo, com Python 3.13: 149 passam; o 133 era anterior à inclusão de 16 testes do relatório HTML. Todo o README passou a dizer o mesmo número (hoje 218, com os testes de operação) e o comando oficial é `uv run pytest --cov`.
+12. **Contagem de testes divergente (133 × 149).** O README citava 133 testes numa conferência e 149 na máquina local. *Reproduzido* em clone novo, com Python 3.13: 149 passam; o 133 era anterior à inclusão de 16 testes do relatório HTML. Todo o README passou a dizer o mesmo número (hoje 221, com os testes de operação) e o comando oficial é `uv run pytest --cov`.
 13. **Cobertura mínima baixa.** O `fail_under` era 60% com cobertura real de 98%. Subiu para 95%.
 
 ## O que foi conferido
 
-- `uv run pytest --cov` e `uv run ruff check .`: **218 testes passando**, cobertura de **98,95%** e `ruff` sem erros (e o CI do GitHub verde a cada pull request).
+- `uv run pytest --cov` e `uv run ruff check .`: **221 testes passando**, cobertura de **98,97%** e `ruff` sem erros (e o CI do GitHub verde a cada pull request).
 - `survey.csv` conferido contra o depósito oficial da OSMI no Figshare: mesmo tamanho (303.684 bytes) e mesmo MD5.
 - Relatório HTML aberto em tela de celular (iPhone 13 e 360 px de largura, no Chromium simulado) e em tema escuro: sem rolagem lateral, os 8 gráficos aparecem, o clique na barra abre o detalhe e o botão Voltar funciona.
 - Em um clone novo do repositório público, numa pasta fora do projeto: `uv sync`, `executar.py` (10 marts, 52 linhas), `conferir.py` (**31 de 31 conferidos**), `pytest` e `ruff`.

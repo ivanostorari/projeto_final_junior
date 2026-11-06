@@ -12,7 +12,7 @@ nos testes.
 
 **A regra é imposta por código.** Um teste passar não prova que ele é independente do banco. Por isso o `conftest.py` tem um guarda automático (`isolar_do_projeto`, `autouse`) que faz **falhar** qualquer teste que tente abrir `saude_mental.duckdb` ou ler `raw/` (via `duckdb.connect`, `Path.open` ou `pandas.read_csv`), e `test_isolamento.py` prova que o guarda funciona.
 
-**Unitários × integração.** Os testes de integração, que rodam o pipeline completo (CSV inventado → Bronze → Prata → Ouro, sempre em `tmp_path`), ficam em `test/integracao/` e têm o marcador `integracao`. `uv run pytest -m "not integracao"` roda só os unitários (187); `uv run pytest -m integracao` só a integração (31); `uv run pytest --cov` roda tudo (218) e é o comando oficial, o único que atinge a cobertura mínima, porque o orquestrador só é exercitado pela integração.
+**Unitários × integração.** Os testes de integração, que rodam o pipeline completo (CSV inventado → Bronze → Prata → Ouro, sempre em `tmp_path`), ficam em `test/integracao/` e têm o marcador `integracao`. `uv run pytest -m "not integracao"` roda só os unitários (190); `uv run pytest -m integracao` só a integração (31); `uv run pytest --cov` roda tudo (221) e é o comando oficial, o único que atinge a cobertura mínima, porque o orquestrador só é exercitado pela integração.
 
 ## Os dados inventados (`test/conftest.py`)
 

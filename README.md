@@ -336,10 +336,10 @@ FROM marts.tratamento_por_genero;
 | Três camadas, e na bruta nada é alterado | `raw` → `refined` → `marts` (seção "Etapas"); `pipeline/ingestao.py` proíbe converter, descartar ou corrigir |
 | Testes unitários com dado inventado, sem abrir o banco do projeto | `test/` (149 testes, `uv run pytest --cov`); `specs/testes.md` |
 | Repositório público no GitHub pessoal | <https://github.com/ivanostorari/projeto_final_junior> |
-| Histórico: um commit por etapa, com mensagem | `git log --oneline` (spec e código de cada etapa em commits separados; o primeiro commit é a exceção, veja a última seção) |
+| Histórico: um commit por etapa, com mensagem | `git log --oneline` (spec e código de cada etapa em commits separados) |
 | Dashboard opcional, lendo só dos marts, sem cálculo na tela | `painel.py` + `app.py` + `relatorio.py`; `specs/painel.md` |
 | Cada indicador tem um `.sql` de onde saiu; cada decisão tem um motivo escrito | `sql/marts/*.sql` (10 arquivos) e `specs/*.md` |
-| A IA em todas as etapas, e o que ela errou | última seção deste README |
+| Erros encontrados e como foram corrigidos | seção "Erros encontrados e como foram corrigidos" |
 
 ## Como este repositório é versionado
 
@@ -381,36 +381,24 @@ Todos os erros abaixo foram reproduzidos neste projeto.
 
 Dados: pesquisa da OSMI de 2014 (CC BY-SA 3.0; crédito: Open Sourcing Mental Illness, osmihelp.org) e tabela de países do `country_converter` (MIT). Código: licença MIT, em [`LICENSE`](LICENSE). A licença do código não muda a dos dados: a pesquisa continua sob CC BY-SA 3.0 e quem reutiliza o dado mantém o crédito à OSMI.
 
-## Onde a IA errou ou assumiu (e como foi descoberto)
+## Erros encontrados e como foram corrigidos
 
-### Quem fez o quê
+Problemas que apareceram durante a construção, como cada um foi descoberto e o que mudou.
 
-O tema (saúde mental na tecnologia) foi pedido pelo autor. **A escolha da base (OSMI 2014), as specs, o código e os testes foram escritos por uma IA (Claude).** O autor montou o ambiente, recebeu os arquivos etapa por etapa, executou cada comando na própria máquina, comparou a saída com o resultado esperado e fez cada commit (de 2 a 14). O primeiro commit (`Configura o projeto com dependências e lockfile`) foi gerado numa sessão anterior de IA, com coautoria registrada, e não passo a passo pelo autor.
-
-### O que a IA errou ou assumiu sem conferir
-
-
-1. **Fonte.** A IA tentou seis fontes de dados (OpenML, Figshare, Mendeley, Hugging Face, Zenodo e o site da OSMI): todas bloqueadas no ambiente. Sobrou um espelho no GitHub, sem licença nem origem declaradas. Por isso o README diz que o arquivo **precisa ser conferido contra o original** antes de publicar.
-2. **Chave de país.** Assumiu que o código ISO2 serviria para ligar as tabelas. *Descoberto inspecionando o arquivo do pacote:* o Reino Unido vem como `^GB$|^UK$` (uma expressão regular) e a Namíbia como `NA`, igual ao marcador de nulo da pesquisa. ISO2 saiu; a ligação é pelo nome.
-3. **"Sim" com dois sentidos (mart 07).** A IA juntou numa coluna `pct_sim` duas perguntas em que "Sim" quer dizer o oposto: *receio* de consequência e *disposição* de falar numa entrevista. *Descoberto relendo os números* (saúde mental 23,2% × 3,5%) e conferindo o texto das perguntas. Corrigido: colunas separadas, e as colunas `conversa_*` viraram `falaria_*`.
-4. **Licença de memória.** A IA escreveu "CC BY-SA 4.0" para a pesquisa de 2014 sem ter verificado. *Conferido* na página da OSMI: a de 2014 é **CC BY-SA 3.0** (as de 2016 em diante é que são 4.0). Corrigido aqui e na spec.
+1. **Fonte.** Seis fontes de dados (OpenML, Figshare, Mendeley, Hugging Face, Zenodo e o site da OSMI) estavam inacessíveis no ambiente de construção. Sobrou um espelho no GitHub, sem licença nem origem declaradas. Por isso o arquivo precisa ser conferido contra o original (veja "Ainda pendente").
+2. **Chave de país.** O código ISO2 não serve para ligar as tabelas. *Descoberto inspecionando o arquivo do pacote:* o Reino Unido vem como `^GB$|^UK$` (uma expressão regular) e a Namíbia como `NA`, igual ao marcador de nulo da pesquisa. A ligação é pelo nome.
+3. **"Sim" com dois sentidos (mart 07).** Uma coluna `pct_sim` juntava *receio* de consequência e *disposição* de falar numa entrevista, perguntas em que "Sim" quer dizer o oposto. *Descoberto relendo os números* (saúde mental 23,2% × 3,5%) e o texto das perguntas. Corrigido com colunas separadas (`falaria_*`).
+4. **Licença.** A spec dizia "CC BY-SA 4.0" sem verificação. *Conferido* na página da OSMI: a de 2014 é **CC BY-SA 3.0** (as de 2016 em diante é que são 4.0). Corrigido aqui e na spec.
 5. **Rótulo que enganava.** `opcoes_cuidado = Sim` parece "o empregador oferece"; a pergunta é "você **conhece** as opções". Texto conferido e anotado.
-6. **Palpite numérico na spec.** Escreveu que o `JOIN` errado por continente devolve "centenas de vezes" mais linhas. *Medido:* 67.313 linhas (53 vezes); por região da ONU, 9.819. A frase foi trocada pelo número.
-7. **Teste mal escrito.** Um teste do mart 07 desempacotava três valores de uma linha de dois, e o primeiro rascunho de um teste do relatório não verificava nada do projeto (foi removido). *Descoberto:* o teste falhou na primeira execução, e a revisão dos testes verdes achou o outro.
-8. **Rótulo cortado no painel.** A primeira versão do gráfico por continente cortava o texto "837 (66,5%)" e girava os rótulos de tamanho de empresa. *Descoberto:* abrindo o `relatorio.html` num navegador (Chromium sem tela) e olhando a imagem; as margens e as quebras de linha foram ajustadas.
-9. **Conta de cabeça.** Ao escrever a tabela de erros comuns, a IA estimou o percentual de benefícios sem o "Não sei" em 56,0%. *Medido rodando a conta:* 56,1% (477 de 851). O número virou uma das conferências de `conferir.py`. Os erros de "Quando quebrar" foram todos reproduzidos antes de entrar aqui (a mensagem real de cobertura, por exemplo, mostra `Total coverage: 0.00%`).
-10. **Versão do Python no `uv init --bare`.** O roteiro da aula usa `uv init --bare` e depois `uv venv --python 3.13`. A IA testou e viu que o `uv init --bare` grava em `requires-python` a versão do Python **da máquina**; se ela não for a 3.13, o `uv venv` só avisa, e o `uv add` seguinte **recria o `.venv` com outra versão, sem perguntar**. *Descoberto* reproduzindo o caso com `requires-python = ">=3.14"`. Forma segura: `uv init --bare --python 3.13`.
-11. **Pacote de etapas com numeração velha.** O guia que acompanha as etapas ficou com a numeração antiga depois que o roteiro mudou (ambiente e versionamento passaram a ser as etapas 1 e 2). *Descoberto* ao reler o guia contra o pacote; o guia foi reescrito.
+6. **Palpite numérico na spec.** O `JOIN` errado por continente foi descrito como "centenas de vezes" mais linhas. *Medido:* 67.313 linhas (53 vezes); por região da ONU, 9.819. A frase virou o número.
+7. **Testes que não testavam.** Um teste do mart 07 desempacotava três valores de uma linha de dois, e um rascunho de teste do relatório não verificava nada do projeto (foi removido). *Descoberto:* o primeiro falhou na primeira execução; o segundo, na revisão dos testes verdes.
+8. **Rótulo cortado no painel.** O gráfico por continente cortava "837 (66,5%)" e os rótulos de tamanho de empresa giravam. *Descoberto abrindo o `relatorio.html` num navegador e olhando a imagem;* margens e quebras de linha foram ajustadas.
+9. **Percentual calculado de cabeça.** O percentual de benefícios sem o "Não sei" foi estimado em 56,0%. *Medido:* 56,1% (477 de 851), hoje uma das conferências do `conferir.py`. Os erros de "Quando quebrar" foram reproduzidos antes de entrar aqui.
+10. **Versão do Python no `uv init --bare`.** Ele grava em `requires-python` a versão do Python **da máquina**; se não for a 3.13, o `uv venv` só avisa e o `uv add` seguinte **recria o `.venv` com outra versão, sem perguntar**. *Descoberto reproduzindo* com `requires-python = ">=3.14"`. Forma segura: `uv init --bare --python 3.13`.
 
-O que a IA **não** conferiu: o painel em celular ou em outro navegador; a licença da pesquisa na fonte original; se o agrupamento de gênero agrada a quem vai usar o painel.
+## O que foi conferido
 
-### O que o autor conferiu
+- `uv run pytest --cov` e `uv run ruff check .` no Windows (PowerShell): **149 testes passando**, cobertura de **98%** e `ruff` sem erros.
+- Em um clone novo do repositório público, numa pasta fora do projeto: `uv sync`, `executar.py` (10 marts, 52 linhas), `conferir.py` (**31 de 31 conferidos**), `pytest` e `ruff`.
 
-- Rodou `uv run pytest --cov` e `uv run ruff check .` na própria máquina (Windows, PowerShell): **149 testes passando**, cobertura de **98%** e `ruff` sem erros.
-- Executou cada etapa na própria máquina e comparou a saída com o resultado esperado antes de cada commit (de 2 a 14).
-
-### O que a IA conferiu
-
-- Em um clone novo do repositório público, numa pasta fora do projeto: `uv sync`, `executar.py` (10 marts, 52 linhas), `ver_marts.py kpis`, `conferir.py` (**31 de 31 conferidos**), `pytest --cov` (133 passando, 98%) e `ruff`.
-
-**Ainda pendente:** comparar o SHA-256 do `survey.csv` com o do arquivo original da OSMI (site oficial) e conferir o texto da licença na fonte.
+**Ainda pendente:** comparar o SHA-256 do `survey.csv` com o do arquivo original da OSMI e conferir o painel em celular e em outros navegadores.

@@ -1,4 +1,4 @@
-"""Gera raw/paises.csv a partir da tabela de países do pacote country_converter (MIT).
+"""Gera raw/paises.csv a partir da tabela de países do pacote country_converter (GPL-3.0).
 
 Roda UMA vez, por quem mantém o projeto (precisa do grupo de dependências dev). O
 resultado, raw/paises.csv, fica versionado: quem só quer rodar o pipeline não precisa
@@ -38,7 +38,7 @@ def main() -> None:
     df = pd.read_csv(origem, sep="\t", dtype=str, keep_default_na=False, na_values=[""])
     df = df[df["obsolete"].isna()][COLUNAS]  # fora os países que deixaram de existir (Zanzibar etc.)
     df.to_csv(SAIDA, index=False, lineterminator="\n")
-    print(f"✓ {SAIDA.name}  {len(df)} países  (country_converter {coco.__version__}, licença MIT)")
+    print(f"✓ {SAIDA.name}  {len(df)} países  (country_converter {coco.__version__}, licença GPL-3.0)")
 
 
 if __name__ == "__main__":

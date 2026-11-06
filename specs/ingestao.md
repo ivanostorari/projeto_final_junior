@@ -8,7 +8,7 @@ não corrige, não descarta. Executar: `uv run python -m pipeline.ingestao`.
 | Arquivo (`raw/`) | Tabela     | Fonte                                                                                   | Licença            |
 |------------------|------------|-----------------------------------------------------------------------------------------|--------------------|
 | `survey.csv`     | `respostas`| Pesquisa **Mental Health in Tech Survey 2014**, da OSMI (Open Sourcing Mental Illness), 1.259 respostas de pessoas que trabalham com tecnologia | CC BY-SA 3.0 Unported para a pesquisa de 2014 (conferido em osmihelp.org/research.html) |
-| `paises.csv`     | `paises`   | Tabela de países do pacote Python `country_converter` 1.3.2, gerada por `preparar_paises.py` | MIT                |
+| `paises.csv`     | `paises`   | Tabela de países do pacote Python `country_converter` 1.3.2, gerada por `preparar_paises.py` | GPL-3.0 (do pacote) |
 
 `survey.csv` está **byte a byte como foi baixado** (SHA-256 `3c4e3e16…db4`, 1.259 linhas + cabeçalho,
 27 colunas). A cópia usada veio de um espelho no GitHub (`alvin-98/mental-health-survey-2014`), que

@@ -1,6 +1,6 @@
 # Spec · Etapa 5 · Testes (`test/`)
 
-Rodar: `uv run pytest --cov`. Mínimo de cobertura: 60% (`fail_under` no `pyproject.toml`).
+Rodar: `uv run pytest --cov`. Mínimo de cobertura: 95% (`fail_under` no `pyproject.toml`); o CI (`.github/workflows/ci.yml`) roda os mesmos comandos a cada pull request e a cada push na `main`.
 
 ## Regra do projeto
 

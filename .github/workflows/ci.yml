@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar uv e Python 3.13
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Instalar dependências do uv.lock
+        run: uv sync --locked
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      - name: Testes com cobertura (falha abaixo do mínimo do pyproject.toml)
+        run: uv run pytest --cov

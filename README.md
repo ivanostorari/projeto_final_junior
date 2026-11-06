@@ -1,5 +1,7 @@
 # Saúde mental na tecnologia · 1.259 respostas em números
 
+[![CI](https://github.com/ivanostorari/projeto_final_junior/actions/workflows/ci.yml/badge.svg)](https://github.com/ivanostorari/projeto_final_junior/actions/workflows/ci.yml)
+
 ## O que é este projeto
 
 Um **pipeline de dados** em Python + DuckDB que pega uma pesquisa pública sobre saúde mental em tecnologia (a **Mental Health in Tech Survey 2014**, da OSMI), organiza o dado em três camadas, calcula **dez indicadores em SQL** e os mostra em um painel (Streamlit) e em uma página HTML.
@@ -11,7 +13,7 @@ Um **pipeline de dados** em Python + DuckDB que pega uma pesquisa pública sobre
 ## De onde vêm os dados
 
 - **`raw/survey.csv`:** a pesquisa **Mental Health in Tech Survey 2014** da [OSMI (Open Sourcing Mental Illness)](https://www.osmihelp.org/research.html): **1.259 respostas** anônimas de pessoas que trabalham com tecnologia, 27 colunas, licença **CC BY-SA 3.0**.
-- **`raw/paises.csv`:** tabela de **250 países** (nome, continente, região da ONU) do pacote Python `country_converter` (MIT), usada para ligar cada resposta a um continente.
+- **`raw/paises.csv`:** tabela de **250 países** (nome, continente, região da ONU) do pacote Python `country_converter` (GPL-3.0), usada para ligar cada resposta a um continente.
 - Detalhes, crédito, licença e a conferência da cópia contra o original estão em [Fonte e licença](#fonte-e-licença) e em `raw/ORIGEM.md`.
 
 ## Que perguntas de negócio ele responde (e onde está a resposta)
@@ -139,7 +141,7 @@ O arquivo `saude_mental.duckdb` é gerado pelo pipeline na raiz do projeto e nã
 | Arquivo (`raw/`) | O que é | Fonte | Licença |
 |------------------|---------|-------|---------|
 | `survey.csv` | 1.259 respostas, 27 colunas, de 27/08/2014 a 01/02/2016 | [OSMI, Mental Health in Tech Survey](https://www.osmihelp.org/research.html) (link "Get raw data" da pesquisa de 2014) | **CC BY-SA 3.0** (Unported) para a pesquisa de 2014, segundo a [página de pesquisa da OSMI](https://www.osmihelp.org/research.html) (as de 2016 a 2021 são 4.0) |
-| `paises.csv` | 250 países com continente e região da ONU | pacote Python [`country_converter`](https://github.com/IndEcol/country_converter) 1.3.2, gerado por `preparar_paises.py` | MIT |
+| `paises.csv` | 250 países com continente e região da ONU | pacote Python [`country_converter`](https://github.com/IndEcol/country_converter) 1.3.2, gerado por `preparar_paises.py` | **GPL-3.0** (do pacote), à parte da licença MIT do código |
 
 **Origem da cópia e conferência:** a cópia de `survey.csv` veio de um espelho no GitHub (`alvin-98/mental-health-survey-2014`), que não declara licença nem origem. O arquivo está **como foi baixado** (SHA-256 `3c4e3e16917f74b5e219ba01caecd09f9dc464c4848becdd018c9442d627abb4`). **Conferido em 06/11/2026** contra o depósito oficial da OSMI no Figshare ([OSMI Mental Health in Tech Survey](https://figshare.com/articles/dataset/OSMI_Mental_Health_in_Tech_Survey/5579458), arquivo `mental-heath-in-tech-2014.csv`): mesmo tamanho (303.684 bytes) e mesmo MD5 (`6e7bf171a9f00f5ec306e897bceaecb1`), o que mostra que o conteúdo é idêntico. O texto das 27 perguntas foi conferido contra a [tabela de perguntas do UZH DataTalk](https://datatalkturk.ifi.uzh.ch/datatalkturk/html/dataset_info_elements/mental_health/question_overview_table.html). **Sobre a licença:** o depósito no Figshare declara CC BY 4.0, enquanto a página de pesquisa da OSMI indica CC BY-SA 3.0 para a pesquisa de 2014. O projeto segue a mais restritiva (CC BY-SA 3.0), que exige dar o crédito à OSMI e manter a mesma licença em adaptações do **dado**.
 
@@ -309,13 +311,17 @@ Cada linha tem o número que a tela mostra, um número **errado** que um erro co
 ## Testes e qualidade
 
 ```bash
-uv run pytest --cov                # todos os testes, com cobertura (mínimo exigido: 60%)
+uv run pytest --cov                # comando oficial: todos os testes, com cobertura (mínimo exigido: 95%)
 uv run ruff check .                # lint
 ```
 
 Os testes ficam em `test/`, um arquivo por módulo. **Nenhum teste abre `saude_mental.duckdb` nem lê `raw/`**: cada um constrói um banco temporário com **dados inventados** (oito respostas e seis países, em `test/conftest.py`, cada linha com o motivo de existir escrito). Nenhum texto de resposta real aparece nos testes. Os valores esperados dos marts foram calculados **à mão** sobre essas linhas. Cobrem as regras das specs: conversões e formatos rejeitados, nulos, "nada é gravado" quando algo falha, `ROLLBACK`, idempotência, o `JOIN` que não muda a contagem, o corte de 20 respostas (EUA, Reino Unido e Canadá com 20; Alemanha com 19 fica de fora por **uma** resposta), a formatação brasileira dos números, o painel, o relatório, o `ver_marts.py` e o `conferir.py`.
 
-Resultado: **149 testes**, cobertura total de 98% (o `fail_under` do `pyproject.toml` é 60%), `ruff` sem erros. Regra e dados inventados em `specs/testes.md`.
+Resultado: **149 testes**, cobertura total de **98,3%** e `ruff` sem erros. O mínimo obrigatório é **95%** (`fail_under` no `pyproject.toml`): abaixo disso o `pytest --cov` termina com erro. A medição cobre todo o código do projeto (`source = ["."]`), exceto `test/` e `preparar_paises.py` (script que roda uma vez). Regra e dados inventados em `specs/testes.md`.
+
+**Integração contínua.** O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda a cada pull request e a cada push na `main`, num ambiente limpo (Python 3.13, dependências do `uv.lock` com `uv sync --locked`): `ruff check` e `pytest --cov`. Se qualquer passo falhar, o workflow falha.
+
+**Reprodução em ambiente limpo.** Em 06/11/2026, num clone novo do repositório, com Python 3.13: `uv sync --locked`, `ruff` sem erros e `uv run pytest --cov` com **149 testes passando** e cobertura de 98,32%. Não há testes pulados nem marcadores que excluam testes. Um valor de 133 testes que apareceu em versões anteriores deste README vinha de uma conferência feita antes de os 16 testes do relatório HTML serem adicionados.
 
 ## Explorando com SQL
 
@@ -357,7 +363,7 @@ Todos os erros abaixo foram reproduzidos neste projeto.
 | `ModuleNotFoundError: No module named 'duckdb'` (ou `'pipeline'`, `'streamlit'`) | Rodou o arquivo pelo botão do Code Runner / `python arquivo.py`: usa o Python global, sem as bibliotecas, e fora da raiz | Sempre pelo terminal, na raiz: `uv sync` e `uv run python executar.py` (ou `uv run python -m pipeline.marts`) |
 | `IO Error: Could not set lock on file ... Conflicting lock is held in ...` | Outro programa tem o banco aberto para escrita: DBeaver, extensão DuckDB do VS Code, um notebook com `duckdb.connect('saude_mental.duckdb')` ou outro terminal rodando o pipeline | Feche o programa (no notebook, `con.close()`) e rode de novo. **O painel não causa isso**: ele abre o banco só para leitura e fecha |
 | O painel mostra o número antigo depois de rodar o pipeline | `st.cache_data` guarda a leitura | Botão **Recarregar dados** na página (ou pare e suba o painel de novo) |
-| `Required test coverage of 60% not reached` (com `Total coverage: 0.00%`) | Rodou `pytest --cov` em um arquivo só, por exemplo `test/test_db.py` | `uv run pytest --cov`, sem apontar arquivo. Não baixe o `fail_under` |
+| `Required test coverage of 95.0% not reached` (com `Total coverage: 0.00%`) | Rodou `pytest --cov` em um arquivo só, por exemplo `test/test_db.py` | `uv run pytest --cov`, sem apontar arquivo. Não baixe o `fail_under` |
 | `no tests ran` / `collected 0 items` | Rodou fora da raiz, ou apontou uma pasta sem testes (`pytest pipeline`) | Na raiz, `uv run pytest`. Os testes ficam em `test/`, em arquivos `test_*.py` |
 | `Port 8501 is already in use` | Já há um painel de pé | Feche o outro, ou `uv run streamlit run app.py --server.port 8502` |
 | As barras saem em ordem alfabética (Às vezes, Frequentemente, Nunca, Raramente) | A ferramenta ordena texto; a ordem certa está na coluna `ordem` do mart | Ordene pela coluna `ordem`, nunca pelo texto |
@@ -377,9 +383,24 @@ Todos os erros abaixo foram reproduzidos neste projeto.
 - Quatro respostas têm estado dos EUA e país estrangeiro (ex.: Letônia/NY). Ficam como vieram; nenhum indicador usa `estado`.
 - As faixas de tamanho da empresa vêm da pesquisa como são (`26-100` e `100-500` dividem o valor 100).
 
-## Licença e créditos
+## Licenças e créditos
 
-Dados: pesquisa da OSMI de 2014 (CC BY-SA 3.0; crédito: Open Sourcing Mental Illness, osmihelp.org) e tabela de países do `country_converter` (MIT). Código: licença MIT, em [`LICENSE`](LICENSE). A licença do código não muda a dos dados: a pesquisa continua sob CC BY-SA 3.0 e quem reutiliza o dado mantém o crédito à OSMI.
+| O quê | Licença | Observação |
+|---|---|---|
+| Código deste repositório | **MIT** ([`LICENSE`](LICENSE)) | vale só para o código |
+| `raw/survey.csv` e o que deriva dele (`refined`, `marts`, relatório) | **CC BY-SA 3.0** | crédito: Open Sourcing Mental Illness (OSMI), osmihelp.org; mesma licença em obras derivadas do dado |
+| `raw/paises.csv` | **GPL-3.0** (do `country_converter`) | extrato da tabela do pacote; tratado à parte do código; detalhes em `raw/ORIGEM.md` |
+
+**Dependências** (todas permissivas, usadas sem modificação): DuckDB (MIT), pandas (BSD-3-Clause), Plotly (MIT), Streamlit (Apache-2.0); no desenvolvimento, pytest (MIT), pytest-cov (MIT), ruff (MIT) e `country_converter` (GPL-3.0, usado só por `preparar_paises.py`, uma vez, e não importado pelo pipeline). As licenças vêm dos metadados das versões do `uv.lock`. Isto não é aconselhamento jurídico.
+
+## Privacidade e uso responsável
+
+- **Dado sensível, anonimizado pela OSMI.** Nada aqui tenta identificar pessoas.
+- **Comentários livres** (`comments`, 164 respostas preenchidas) existem **só na camada `raw`**, como chegaram. A transformação não os leva para `refined`, e nenhum mart os contém (conferido nas colunas do banco).
+- **Minimização:** `refined` descarta `comments` e mantém as demais colunas da pesquisa, já tipadas; `idade_informada` guarda o valor original das idades inválidas.
+- **Nada individual na tela:** o painel e o relatório leem só os `marts`, que são agregados (contagens e percentuais); grupos com menos de 20 respostas não entram em rankings.
+- **Saída do pipeline:** o `executar.py` imprime só contagens e nomes de tabelas, nunca linhas das respostas.
+- **Retenção:** o banco `saude_mental.duckdb` é gerado localmente e não vai ao repositório; para apagar tudo, basta apagá-lo e rodar `executar.py` de novo.
 
 ## Erros encontrados e como foram corrigidos
 
@@ -395,6 +416,10 @@ Problemas que apareceram durante a construção, como cada um foi descoberto e o
 8. **Rótulo cortado no painel.** O gráfico por continente cortava "837 (66,5%)" e os rótulos de tamanho de empresa giravam. *Descoberto abrindo o `relatorio.html` num navegador e olhando a imagem;* margens e quebras de linha foram ajustadas.
 9. **Percentual calculado de cabeça.** O percentual de benefícios sem o "Não sei" foi estimado em 56,0%. *Medido:* 56,1% (477 de 851), hoje uma das conferências do `conferir.py`. Os erros de "Quando quebrar" foram reproduzidos antes de entrar aqui.
 10. **Versão do Python no `uv init --bare`.** Ele grava em `requires-python` a versão do Python **da máquina**; se não for a 3.13, o `uv venv` só avisa e o `uv add` seguinte **recria o `.venv` com outra versão, sem perguntar**. *Descoberto reproduzindo* com `requires-python = ">=3.14"`. Forma segura: `uv init --bare --python 3.13`.
+
+11. **Licença do pacote de países.** A tabela de países vinha documentada como MIT. *Descoberto* abrindo os metadados e o `LICENSE` do `country_converter` 1.3.2: é **GPL-3.0**. Corrigido em todos os documentos; o `paises.csv` passa a ser tratado como GPL-3.0, à parte do código (MIT), como descrito em `raw/ORIGEM.md`.
+12. **Contagem de testes divergente (133 × 149).** O README citava 133 testes numa conferência e 149 na máquina local. *Reproduzido* em clone novo, com Python 3.13: 149 passam; o 133 era anterior à inclusão de 16 testes do relatório HTML. Todo o README passou a dizer 149 e o comando oficial é `uv run pytest --cov`.
+13. **Cobertura mínima baixa.** O `fail_under` era 60% com cobertura real de 98%. Subiu para 95%.
 
 ## O que foi conferido
 

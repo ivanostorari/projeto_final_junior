@@ -19,3 +19,9 @@ htmlcov/
 *.db
 *.duckdb
 *.parquet
+
+# Gerados ao rodar o projeto
+*.duckdb.wal
+relatorio.html
+export/
+site/

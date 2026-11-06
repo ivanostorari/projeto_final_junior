@@ -37,7 +37,10 @@ O ranking de países (mart 08) exige 20 respostas por país, então tem teste pr
 | `test_painel.py`       | formato brasileiro, grupo com menos de 20 respostas fora do gráfico (nota diz quem), receio × disposição em barras separadas, leitura somente leitura, nenhum cálculo no código |
 | `test_relatorio.py`    | HTML idêntico para os mesmos dados e a mesma data, ids fixos, rodapé com data                 |
 | `test_app.py`          | a página Streamlit abre sem exceção, mostra erro legível sem banco, botão recarrega           |
-| `test_executar.py`     | apaga o banco, roda as três etapas na ordem, uma falha impede as seguintes                    |
+| `test_executar.py`     | `executar.py`: sucesso publica o banco e escreve o resumo; falha sai com código 1 e não cria banco |
+| `test_contrato.py`     | cada violação do contrato dos CSVs (ausente, vazio, encoding, coluna, linha quebrada, repetida, chave) e sua severidade |
+| `test_qualidade.py`    | cada regra de qualidade passa no dado bom e falha no dado adulterado; conciliação entre camadas |
+| `test_orquestrador.py` | integração: pipeline completo, idempotência, falha no meio, entradas inválidas, bloqueio por qualidade, rastreabilidade e logs sem dado pessoal |
 | `test_ver_marts.py`    | imprime os dez marts (ou só os pedidos), mart inexistente e banco ausente saem com código 1   |
 | `test_conferir.py`     | a lógica de `conferir.py` (compara com o esperado, arredonda float, sai com 1 se divergir) sobre um banco inventado |
 

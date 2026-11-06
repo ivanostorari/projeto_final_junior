@@ -2,25 +2,24 @@
 
     uv run python executar.py
 
-É a saída de emergência de "quebrei tudo e não sei onde": apaga o saude_mental.duckdb
-(o banco é descartável, os .sql e o código estão em arquivo) e roda a
-ingestão, a transformação e os marts. Qualquer etapa que falhar interrompe
-as seguintes: cada uma já encerra com sys.exit(1) e mensagem clara.
+Confere os CSVs, roda ingestão, transformação e marts, confere a qualidade de cada camada e só então
+troca o saude_mental.duckdb. Se qualquer etapa falhar, o banco anterior continua como estava (o novo é
+construído ao lado e descartado). Cada execução fica registrada em logs/ e no schema `controle`.
+Código de saída: 0 deu certo, 1 falhou. Regras completas em specs/operacao.md.
 """
 
-from pipeline import db, ingestao, marts, transformacao
+import sys
+
+from pipeline import orquestrador
 from pipeline.saida import configurar_saida
 
 
 def main() -> None:
     configurar_saida()
-    if db.CAMINHO_BANCO.exists():
-        db.CAMINHO_BANCO.unlink()
-        print(f"(banco {db.CAMINHO_BANCO.name} apagado)")
-    etapas = [("1 · ingestão", ingestao), ("2 · transformação", transformacao), ("3 · marts", marts)]
-    for nome, modulo in etapas:
-        print(f"\n== {nome}")
-        modulo.main()
+    resultado = orquestrador.rodar()
+    orquestrador.imprimir_resumo(resultado)
+    if resultado.status != "ok":
+        sys.exit(1)
 
 
 if __name__ == "__main__":

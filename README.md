@@ -52,7 +52,7 @@ flowchart LR
 | **Prata** | `refined` | `pipeline/transformacao.py` + `dicionario.py` | `specs/transformacao.md` | Dado **limpo e tipado**: nomes em português, Sim/Não em `BOOLEAN`, idade conferida, gênero agrupado, valores traduzidos | Lê de `raw`, nunca escreve nela; valor desconhecido **para tudo** |
 | **Ouro** | `marts` | `pipeline/marts.py` executa `sql/marts/*.sql` | `specs/marts.md` | **10 indicadores** prontos para a tela (52 linhas) | Toda regra de negócio mora no `.sql`; o painel só lê |
 
-Fluxo resumido: `raw/*.csv ──► raw (bronze) ──► refined (prata) ──► marts (ouro) ──► painel`. O `executar.py` roda as três etapas na ordem.
+Fluxo resumido: `raw/*.csv ──► raw (bronze) ──► refined (prata) ──► marts (ouro) ──► painel`. O `executar.py` roda as três etapas na ordem, confere a qualidade de cada camada e registra a execução (seção "Operação").
 
 ## Leia isto antes dos números
 
@@ -87,7 +87,7 @@ uv run python -m pipeline.marts           # 3. refined -> schema marts
 uv run streamlit run app.py               # painel em http://localhost:8501
 ```
 
-Atalho: `uv run python executar.py` apaga o banco e roda as três etapas, na ordem.
+Atalho: `uv run python executar.py` confere os CSVs, roda as três etapas na ordem, confere a qualidade de cada camada e só então troca o banco. Se algo falhar, **o banco anterior continua como estava**. Código de saída: 0 deu certo, 1 falhou.
 
 Outros comandos, todos opcionais:
 
@@ -102,7 +102,7 @@ O `.duckdb` aceita um único processo escrevendo. Com o banco aberto em outro pr
 
 Todas as etapas são idempotentes: rodar duas vezes produz exatamente a mesma saída.
 
-Saída esperada de `executar.py`: `raw.respostas 1.259` e `raw.paises 250` (total 1.509); o resumo `raw → refined` (1.259 → 1.259, 8 idades zeradas, contagem por gênero); e `✓ marts.<nome> N linhas` para os dez marts (52 linhas).
+Saída esperada de `executar.py`: `raw.respostas 1.259` e `raw.paises 250` (total 1.509); o resumo `raw → refined` (1.259 → 1.259, 8 idades zeradas, contagem por gênero); `✓ marts.<nome> N linhas` para os dez marts (52 linhas); e, no fim, o resumo da execução (id, etapas com tempo e contagens, 37 verificações de qualidade, "banco novo publicado").
 
 ## Estrutura
 
@@ -116,25 +116,30 @@ projeto_final_junior/
 │   ├── ingestao.py         etapa 1: CSV -> raw
 │   ├── dicionario.py       traduções, valores permitidos, mapa de gênero, limites de idade
 │   ├── transformacao.py    etapa 2: raw -> refined
-│   └── marts.py            etapa 3: refined -> marts (executa sql/marts/*.sql)
+│   ├── marts.py            etapa 3: refined -> marts (executa sql/marts/*.sql)
+│   ├── contrato.py         confere os CSVs de entrada (colunas, linhas, chave) antes de gravar
+│   ├── qualidade.py        regras de qualidade por camada (erro, aviso, informação) e conciliação
+│   ├── execucao.py         registro de uma execução: id, etapas, hashes, linhagem, logs JSON
+│   └── orquestrador.py     roda tudo na ordem, para na falha, só publica o banco se tudo deu certo
 ├── sql/marts/              um .sql por indicador (NN_<nome>.sql)
 ├── specs/
 │   ├── ingestao.md         spec da etapa 1
 │   ├── transformacao.md    spec da etapa 2
 │   ├── marts.md            spec da etapa 3 e definições dos indicadores
+│   ├── operacao.md         spec do orquestrador, da rastreabilidade, dos logs e da qualidade
 │   ├── painel.md           spec do painel
 │   └── testes.md           regra dos testes e dados inventados
 ├── painel.py               leitura dos marts, formatação e gráficos (sem Streamlit)
 ├── app.py                  página Streamlit
 ├── relatorio.py            o mesmo painel como um HTML único
-├── executar.py             roda as três etapas do zero
+├── executar.py             roda o pipeline inteiro (via pipeline/orquestrador.py)
 ├── ver_marts.py            mostra os marts no terminal
 ├── conferir.py             confere os números da tela contra os marts
 ├── test/                   testes (pytest), um arquivo por módulo
 └── pyproject.toml          dependências e configuração do ruff, do pytest e da cobertura
 ```
 
-O arquivo `saude_mental.duckdb` é gerado pelo pipeline na raiz do projeto e não é versionado (nem o `relatorio.html`). Todos os caminhos são resolvidos a partir da localização dos arquivos `.py`.
+O arquivo `saude_mental.duckdb`, a pasta `logs/` e o `relatorio.html` são gerados ao rodar o projeto e não são versionados. Todos os caminhos são resolvidos a partir da localização dos arquivos `.py`.
 
 ## Fonte e licença
 
@@ -308,6 +313,28 @@ Cada linha tem o número que a tela mostra, um número **errado** que um erro co
 - **Relatório HTML** (`relatorio.py` → `relatorio.html`): o mesmo painel numa página única, com menu, tema claro e escuro e layout que se adapta ao celular. **Clicar numa barra abre o detalhe** daquele item, com os botões **Voltar** (volta ao mesmo ponto da página) e **Início**. A seção **Dados completos** tem uma aba com a tabela inteira de cada um dos 10 marts. Nada é calculado na página: o detalhe e as tabelas copiam o que os marts já têm. Precisa de internet só para os gráficos (Plotly via CDN).
 - Botão **Recarregar dados** limpa o cache depois de rodar o pipeline de novo. Se o banco ou algum mart faltar, a página mostra o que falta e o comando para gerar.
 
+## Operação: execução, rastreabilidade e qualidade
+
+Spec completa em `specs/operacao.md`. O `executar.py` chama o orquestrador, que roda, nesta ordem: **pré-condições** (contrato dos CSVs) → **ingestão** → **conciliação CSV × raw** → **transformação** → **qualidade da Prata** → **marts** → **qualidade da Ouro**.
+
+- **Parada e dependência.** Se uma etapa falha, as seguintes ficam `nao_executada` (aparecem no resumo, não somem). Falha de qualidade com severidade `erro` conta como falha: se for na Prata, os marts nem são criados.
+- **Reexecução segura.** O banco novo nasce em `saude_mental.duckdb.novo` e só substitui o anterior se **tudo** deu certo. Falhou no meio, o banco anterior fica intacto e o temporário é apagado. Rodar duas vezes seguidas dá os mesmos dados.
+- **Contrato dos CSVs.** Antes de gravar qualquer coisa: arquivo existe, é UTF-8, tem linhas, tem as colunas esperadas (faltar é erro; sobrar é aviso), sem coluna repetida, sem linha com número de campos errado, sem linhas 100% repetidas (aviso) e sem chave repetida em `paises.csv`.
+- **Qualidade por camada** (dimensões: completude, unicidade, validade, consistência, integridade, domínio, esquema, privacidade). Cada regra tem severidade: `erro` (para tudo), `aviso` (registra e segue) ou `informação` (só mede). A Prata é conferida contra o esquema definido em `transformacao.TABELAS` e contra o dicionário de valores; a Ouro, contra os limites dos percentuais; e as camadas são **conciliadas**: linhas do CSV = `raw` = `refined`, e a soma de `respondentes` dos marts que particionam as respostas (01, 02, 03, 04, 06 e 09) é igual a `refined.respostas`. Se a Ouro reprovar, o schema `marts` é apagado do banco em construção e nada é publicado. Execução real: **37 verificações, todas ok**.
+- **Rastreabilidade.** Cada execução tem um `execucao_id`. O schema `controle`, dentro do banco, descreve a execução que gerou aquele banco: `execucoes` (versão do pipeline, início, fim, status), `etapas` (duração e contagens recebidas, processadas, rejeitadas e publicadas), `arquivos_origem` (SHA-256, bytes e linhas de cada CSV), `linhagem` (de qual arquivo/tabela vem cada tabela e cada mart, extraído do próprio `.sql`) e `qualidade` (resultado de cada regra).
+- **Logs estruturados.** A pasta `logs/` (não versionada) guarda o histórico: `pipeline.jsonl` (um evento JSON por linha: início e fim de cada etapa, duração, contagens, status, erros com tipo e mensagem curta) e, por execução, `execucoes/<id>/execucao.json` e `qualidade.json`. **Nenhum log leva resposta individual ou comentário**: só nomes de arquivo, tabela e regra, contagens e tempos (há teste para isso).
+
+```bash
+uv run python executar.py                          # roda tudo e imprime o resumo da execução
+```
+
+```sql
+-- no DuckDB, depois de rodar o pipeline:
+SELECT * FROM controle.etapas ORDER BY ordem;
+SELECT destino, string_agg(origem, ', ') FROM controle.linhagem GROUP BY 1 ORDER BY 1;
+SELECT * FROM controle.qualidade WHERE NOT aprovada;
+```
+
 ## Testes e qualidade
 
 ```bash
@@ -315,13 +342,13 @@ uv run pytest --cov                # comando oficial: todos os testes, com cober
 uv run ruff check .                # lint
 ```
 
-Os testes ficam em `test/`, um arquivo por módulo. **Nenhum teste abre `saude_mental.duckdb` nem lê `raw/`**: cada um constrói um banco temporário com **dados inventados** (oito respostas e seis países, em `test/conftest.py`, cada linha com o motivo de existir escrito). Nenhum texto de resposta real aparece nos testes. Os valores esperados dos marts foram calculados **à mão** sobre essas linhas. Cobrem as regras das specs: conversões e formatos rejeitados, nulos, "nada é gravado" quando algo falha, `ROLLBACK`, idempotência, o `JOIN` que não muda a contagem, o corte de 20 respostas (EUA, Reino Unido e Canadá com 20; Alemanha com 19 fica de fora por **uma** resposta), a formatação brasileira dos números, o painel, o relatório, o `ver_marts.py` e o `conferir.py`.
+Os testes ficam em `test/`, um arquivo por módulo. **Nenhum teste abre `saude_mental.duckdb` nem lê `raw/`**: cada um constrói um banco temporário com **dados inventados** (oito respostas e seis países, em `test/conftest.py`, cada linha com o motivo de existir escrito; os testes de integração acrescentam 20 respostas geradas para o ranking de países ter o mínimo de 20 por país). Nenhum texto de resposta real aparece nos testes. Os valores esperados dos marts foram calculados **à mão** sobre essas linhas. Cobrem as regras das specs: conversões e formatos rejeitados, nulos, "nada é gravado" quando algo falha, `ROLLBACK`, idempotência, o `JOIN` que não muda a contagem, o corte de 20 respostas (EUA, Reino Unido e Canadá com 20; Alemanha com 19 fica de fora por **uma** resposta), a formatação brasileira dos números, o painel, o relatório, o `ver_marts.py` e o `conferir.py`. Os testes de **integração** (`test_orquestrador.py`) rodam o pipeline completo, CSV → Bronze → Prata → Ouro, com os `.sql` reais e CSVs inventados: contagens por camada, **idempotência** (duas execuções, mesmo resultado), **simulação de falha no meio** (banco anterior intacto, nada temporário sobrando), arquivos ausentes, vazios, só com cabeçalho, em outra codificação, com coluna faltando, linha quebrada, linhas repetidas e chave duplicada, bloqueio da Prata e da Ouro por qualidade, e a ausência de comentários nos logs. `test_contrato.py` e `test_qualidade.py` cobrem cada regra do contrato e da qualidade (passa no dado bom, falha no dado adulterado).
 
-Resultado: **149 testes**, cobertura total de **98,3%** e `ruff` sem erros. O mínimo obrigatório é **95%** (`fail_under` no `pyproject.toml`): abaixo disso o `pytest --cov` termina com erro. A medição cobre todo o código do projeto (`source = ["."]`), exceto `test/` e `preparar_paises.py` (script que roda uma vez). Regra e dados inventados em `specs/testes.md`.
+Resultado: **215 testes**, cobertura total de **98,95%** e `ruff` sem erros. O mínimo obrigatório é **95%** (`fail_under` no `pyproject.toml`): abaixo disso o `pytest --cov` termina com erro. A medição cobre todo o código do projeto (`source = ["."]`), exceto `test/` e `preparar_paises.py` (script que roda uma vez). Regra e dados inventados em `specs/testes.md`.
 
 **Integração contínua.** O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda a cada pull request e a cada push na `main`, num ambiente limpo (Python 3.13, dependências do `uv.lock` com `uv sync --locked`): `ruff check` e `pytest --cov`. Se qualquer passo falhar, o workflow falha.
 
-**Reprodução em ambiente limpo.** Em 06/11/2026, num clone novo do repositório, com Python 3.13: `uv sync --locked`, `ruff` sem erros e `uv run pytest --cov` com **149 testes passando** e cobertura de 98,32%. Não há testes pulados nem marcadores que excluam testes. Um valor de 133 testes que apareceu em versões anteriores deste README vinha de uma conferência feita antes de os 16 testes do relatório HTML serem adicionados.
+**Reprodução em ambiente limpo.** Em 06/11/2026, num clone novo do repositório, com Python 3.13: `uv sync --locked`, `ruff` sem erros e `uv run pytest --cov` com **215 testes passando** e cobertura de 98,95%. Não há testes pulados nem marcadores que excluam testes.
 
 ## Explorando com SQL
 
@@ -340,7 +367,7 @@ FROM marts.tratamento_por_genero;
 | Fonte escolhida por você, com link e licença | seção "Fonte e licença" e `raw/ORIGEM.md` |
 | Duas tabelas ou mais, ligadas por uma chave (JOIN) | `respostas` × `paises` pelo nome do país; JOIN em `sql/marts/01_*.sql` e `08_*.sql` |
 | Três camadas, e na bruta nada é alterado | `raw` → `refined` → `marts` (seção "Etapas"); `pipeline/ingestao.py` proíbe converter, descartar ou corrigir |
-| Testes unitários com dado inventado, sem abrir o banco do projeto | `test/` (149 testes, `uv run pytest --cov`); `specs/testes.md` |
+| Testes unitários com dado inventado, sem abrir o banco do projeto | `test/` (215 testes, `uv run pytest --cov`); `specs/testes.md` |
 | Repositório público no GitHub pessoal | <https://github.com/ivanostorari/projeto_final_junior> |
 | Histórico: um commit por etapa, com mensagem | `git log --oneline` (spec e código de cada etapa em commits separados) |
 | Dashboard opcional, lendo só dos marts, sem cálculo na tela | `painel.py` + `app.py` + `relatorio.py`; `specs/painel.md` |
@@ -373,7 +400,7 @@ Todos os erros abaixo foram reproduzidos neste projeto.
 | `error: The current directory (...) is not a valid package name` | O `uv init` rodou fora da pasta do projeto (por exemplo, na pasta do usuário do Windows, que tem acento e maiúsculas) | Crie a pasta do projeto em um caminho sem acento nem espaço (ex.: `C:\projeto`) e rode o `uv init` dentro dela |
 | `Author identity unknown`, depois `src refspec main does not match any` | O Git não sabe o nome e o e-mail do autor, então o commit não é criado e a branch `main` não existe | `git config user.name` e `git config user.email` (sem `--global` em computador compartilhado), refaça o commit e o `git push` |
 | `! [rejected] main -> main (fetch first)` | O repositório do GitHub foi criado com README ou licença, e tem um commit que a pasta local não tem | Crie o repositório **vazio**, sem README, `.gitignore` nem licença |
-| "Quebrei tudo e não sei onde" | — | `uv run python executar.py` (apaga o banco e refaz as três etapas; cada uma para com mensagem clara), depois `uv run python conferir.py` (mostra qual número divergiu). No git: `git status`, `git diff`, `git restore <arquivo>` |
+| "Quebrei tudo e não sei onde" | — | `uv run python executar.py` (refaz tudo do zero; a etapa que falhar para com mensagem clara e o banco anterior fica intacto; o resumo e `logs/` dizem onde parou), depois `uv run python conferir.py` (mostra qual número divergiu). No git: `git status`, `git diff`, `git restore <arquivo>` |
 
 ## Limites conhecidos
 
@@ -382,6 +409,7 @@ Todos os erros abaixo foram reproduzidos neste projeto.
 - `interferencia_trabalho` é nula para 264 pessoas (260 delas não buscaram tratamento); isso sugere "não se aplica", mas é hipótese, e o indicador as chama de `sem_resposta`.
 - Quatro respostas têm estado dos EUA e país estrangeiro (ex.: Letônia/NY). Ficam como vieram; nenhum indicador usa `estado`.
 - As faixas de tamanho da empresa vêm da pesquisa como são (`26-100` e `100-500` dividem o valor 100).
+- O banco guarda só a execução que o gerou (schema `controle`); o histórico entre execuções fica em `logs/`, que não vai ao Git. Não há execução incremental nem agendador: é um pipeline em lote, rodado à mão.
 
 ## Licenças e créditos
 
@@ -391,7 +419,7 @@ Todos os erros abaixo foram reproduzidos neste projeto.
 | `raw/survey.csv` e o que deriva dele (`refined`, `marts`, relatório) | **CC BY-SA 3.0** | crédito: Open Sourcing Mental Illness (OSMI), osmihelp.org; mesma licença em obras derivadas do dado |
 | `raw/paises.csv` | **GPL-3.0** (do `country_converter`) | extrato da tabela do pacote; tratado à parte do código; detalhes em `raw/ORIGEM.md` |
 
-**Dependências** (todas permissivas, usadas sem modificação): DuckDB (MIT), pandas (BSD-3-Clause), Plotly (MIT), Streamlit (Apache-2.0); no desenvolvimento, pytest (MIT), pytest-cov (MIT), ruff (MIT) e `country_converter` (GPL-3.0, usado só por `preparar_paises.py`, uma vez, e não importado pelo pipeline). As licenças vêm dos metadados das versões do `uv.lock`. Isto não é aconselhamento jurídico.
+**Dependências** (usadas sem modificação). As do pipeline e do painel têm licenças permissivas: DuckDB (MIT), pandas (BSD-3-Clause), Plotly (MIT), Streamlit (Apache-2.0). No desenvolvimento: pytest (MIT), pytest-cov (MIT), ruff (MIT) e `country_converter`, que é **GPL-3.0** (usado só por `preparar_paises.py`, uma vez, e não importado pelo pipeline). As licenças vêm dos metadados das versões do `uv.lock`. Isto não é aconselhamento jurídico.
 
 ## Privacidade e uso responsável
 
@@ -399,8 +427,8 @@ Todos os erros abaixo foram reproduzidos neste projeto.
 - **Comentários livres** (`comments`, 164 respostas preenchidas) existem **só na camada `raw`**, como chegaram. A transformação não os leva para `refined`, e nenhum mart os contém (conferido nas colunas do banco).
 - **Minimização:** `refined` descarta `comments` e mantém as demais colunas da pesquisa, já tipadas; `idade_informada` guarda o valor original das idades inválidas.
 - **Nada individual na tela:** o painel e o relatório leem só os `marts`, que são agregados (contagens e percentuais); grupos com menos de 20 respostas não entram em rankings.
-- **Saída do pipeline:** o `executar.py` imprime só contagens e nomes de tabelas, nunca linhas das respostas.
-- **Retenção:** o banco `saude_mental.duckdb` é gerado localmente e não vai ao repositório; para apagar tudo, basta apagá-lo e rodar `executar.py` de novo.
+- **Saída e logs do pipeline:** o `executar.py` e os arquivos de `logs/` trazem só contagens, tempos e nomes de arquivos, tabelas e regras, nunca linhas das respostas nem comentários.
+- **Retenção:** o banco `saude_mental.duckdb` é gerado localmente e não vai ao repositório; para apagar tudo, basta apagá-lo (e a pasta `logs/`) e rodar `executar.py` de novo.
 
 ## Erros encontrados e como foram corrigidos
 
@@ -418,12 +446,12 @@ Problemas que apareceram durante a construção, como cada um foi descoberto e o
 10. **Versão do Python no `uv init --bare`.** Ele grava em `requires-python` a versão do Python **da máquina**; se não for a 3.13, o `uv venv` só avisa e o `uv add` seguinte **recria o `.venv` com outra versão, sem perguntar**. *Descoberto reproduzindo* com `requires-python = ">=3.14"`. Forma segura: `uv init --bare --python 3.13`.
 
 11. **Licença do pacote de países.** A tabela de países vinha documentada como MIT. *Descoberto* abrindo os metadados e o `LICENSE` do `country_converter` 1.3.2: é **GPL-3.0**. Corrigido em todos os documentos; o `paises.csv` passa a ser tratado como GPL-3.0, à parte do código (MIT), como descrito em `raw/ORIGEM.md`.
-12. **Contagem de testes divergente (133 × 149).** O README citava 133 testes numa conferência e 149 na máquina local. *Reproduzido* em clone novo, com Python 3.13: 149 passam; o 133 era anterior à inclusão de 16 testes do relatório HTML. Todo o README passou a dizer 149 e o comando oficial é `uv run pytest --cov`.
+12. **Contagem de testes divergente (133 × 149).** O README citava 133 testes numa conferência e 149 na máquina local. *Reproduzido* em clone novo, com Python 3.13: 149 passam; o 133 era anterior à inclusão de 16 testes do relatório HTML. Todo o README passou a dizer o mesmo número (hoje 215, com os testes de operação) e o comando oficial é `uv run pytest --cov`.
 13. **Cobertura mínima baixa.** O `fail_under` era 60% com cobertura real de 98%. Subiu para 95%.
 
 ## O que foi conferido
 
-- `uv run pytest --cov` e `uv run ruff check .` no Windows (PowerShell): **149 testes passando**, cobertura de **98%** e `ruff` sem erros.
+- `uv run pytest --cov` e `uv run ruff check .`: **215 testes passando**, cobertura de **98,95%** e `ruff` sem erros (e o CI do GitHub verde a cada pull request).
 - `survey.csv` conferido contra o depósito oficial da OSMI no Figshare: mesmo tamanho (303.684 bytes) e mesmo MD5.
 - Relatório HTML aberto em tela de celular (iPhone 13 e 360 px de largura, no Chromium simulado) e em tema escuro: sem rolagem lateral, os 8 gráficos aparecem, o clique na barra abre o detalhe e o botão Voltar funciona.
 - Em um clone novo do repositório público, numa pasta fora do projeto: `uv sync`, `executar.py` (10 marts, 52 linhas), `conferir.py` (**31 de 31 conferidos**), `pytest` e `ruff`.

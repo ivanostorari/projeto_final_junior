@@ -63,22 +63,34 @@ def ler_csv(caminho, marcadores_de_nulo: list[str]) -> pd.DataFrame:
     )
 
 
+def ingerir(con, pasta=None) -> list[tuple[str, int]]:
+    """Grava cada CSV de `pasta` no schema raw. Devolve [(tabela, linhas gravadas)]."""
+    pasta = pasta or db.PASTA_RAW
+    db.criar_schema(con, SCHEMA)
+    resultados = []
+    for arquivo, (tabela, nulos) in ARQUIVOS.items():
+        df = ler_csv(pasta / arquivo, nulos)
+        resultados.append((tabela, db.gravar(con, df, SCHEMA, tabela)))
+    return resultados
+
+
+def imprimir(resultados: list[tuple[str, int]]) -> None:
+    for tabela, linhas in resultados:
+        print(f"✓ {SCHEMA}.{tabela:<12} {milhar(linhas):>9} linhas")
+    total = sum(linhas for _, linhas in resultados)
+    print(f"  total{'':<13} {milhar(total):>9} linhas")
+
+
 def main() -> None:
     configurar_saida()
     verificar_arquivos()
 
     con = db.conectar()
     try:
-        db.criar_schema(con, SCHEMA)
-        total = 0
-        for arquivo, (tabela, nulos) in ARQUIVOS.items():
-            df = ler_csv(db.PASTA_RAW / arquivo, nulos)
-            linhas = db.gravar(con, df, SCHEMA, tabela)
-            total += linhas
-            print(f"✓ {SCHEMA}.{tabela:<12} {milhar(linhas):>9} linhas")
-        print(f"  total{'':<13} {milhar(total):>9} linhas")
+        resultados = ingerir(con)
     finally:
         con.close()
+    imprimir(resultados)
 
 
 if __name__ == "__main__":

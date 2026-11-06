@@ -33,6 +33,7 @@ ORIGEM = "refined"
 PASTA_SQL = db.RAIZ / "sql" / "marts"
 TABELAS_NECESSARIAS = ["respostas", "paises"]
 PADRAO_ARQUIVO = re.compile(r"^(\d{2})_([a-z][a-z0-9_]*)\.sql$")
+REFERENCIA = re.compile(r"\b(raw|refined|marts)\.([a-z_][a-z0-9_]*)")
 
 
 class ErroDeMarts(Exception):
@@ -70,6 +71,12 @@ def limpar_sql(texto: str) -> str:
     if texto.endswith(";"):
         texto = texto[:-1].rstrip()
     return texto
+
+
+def dependencias(sql: str) -> list[str]:
+    """Tabelas (schema.tabela) que o SQL cita, sem olhar os comentários. Base da linhagem dos marts."""
+    codigo = "\n".join(linha.split("--", 1)[0] for linha in sql.splitlines())
+    return sorted({f"{schema}.{tabela}" for schema, tabela in REFERENCIA.findall(codigo)})
 
 
 def verificar_entrada(con) -> None:

@@ -20,6 +20,8 @@ from test.conftest import (
     respostas_do_pipeline,
 )
 
+pytestmark = pytest.mark.integracao  # roda o pipeline completo (em tmp_path): fora dos testes unitários
+
 TOTAL, PAISES = 28, 6
 ETAPAS = ["pré-condições", "1 · ingestão", "1b · conciliação do raw", "2 · transformação",
           "2b · qualidade da Silver", "3 · marts", "3b · qualidade da Gold"]
@@ -235,6 +237,7 @@ def test_sobra_de_execucao_interrompida_e_removida(ambiente):
     ],
     ids=["ausente", "vazio", "so-cabecalho", "encoding", "coluna-faltando", "linha-quebrada"],
 )
+
 def test_entradas_invalidas_param_nas_precondicoes(ambiente, preparar):
     preparar(ambiente["pasta_raw"])
     execucao = rodar(ambiente)

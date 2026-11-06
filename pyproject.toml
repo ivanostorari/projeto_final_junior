@@ -20,6 +20,9 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["test"]
 pythonpath = ["."]
+markers = [
+    "integracao: roda o pipeline completo (CSV inventado -> marts) em pasta temporária; os unitários são os demais",
+]
 
 [tool.coverage.run]
 source = ["."]

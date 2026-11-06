@@ -6,6 +6,8 @@ import executar
 from pipeline import db
 from test.conftest import escrever_entradas
 
+pytestmark = pytest.mark.integracao  # roda o pipeline completo (em tmp_path): fora dos testes unitários
+
 
 @pytest.fixture
 def pastas(monkeypatch, tmp_path):

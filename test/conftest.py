@@ -7,11 +7,13 @@ sobre essa entrada, nunca de um número medido no dado real.
 """
 
 import csv
+from pathlib import Path
 
 import duckdb
+import pandas as pd
 import pytest
 
-from pipeline import transformacao
+from pipeline import db, transformacao
 
 COLUNAS_SURVEY = [
     "Timestamp", "Age", "Gender", "Country", "state", "self_employed", "family_history", "treatment",
@@ -138,3 +140,33 @@ def refined(con):
     popular_raw(con)
     transformacao.transformar(con)
     return con
+
+
+@pytest.fixture(autouse=True)
+def isolar_do_projeto(monkeypatch):
+    """Faz FALHAR qualquer teste que tente abrir o banco do projeto ou ler raw/ de verdade.
+
+    Um teste passar não prova que ele é independente do dado real; este guarda prova: se algum
+    teste (ou função chamada por ele) tocar em saude_mental.duckdb ou em raw/, ele quebra na hora.
+    """
+    banco, raw = (db.RAIZ / "saude_mental.duckdb").resolve(), (db.RAIZ / "raw").resolve()
+    conectar, abrir, ler_csv = duckdb.connect, Path.open, pd.read_csv
+
+    def conectar_guardado(database=":memory:", *args, **kwargs):
+        if str(database) != ":memory:" and Path(database).resolve() == banco:
+            raise AssertionError(f"teste tentou abrir o banco do projeto: {database}")
+        return conectar(database, *args, **kwargs)
+
+    def abrir_guardado(self, *args, **kwargs):
+        if raw in Path(self).resolve().parents:
+            raise AssertionError(f"teste tentou ler a pasta raw/ do projeto: {self}")
+        return abrir(self, *args, **kwargs)
+
+    def ler_csv_guardado(caminho, *args, **kwargs):
+        if isinstance(caminho, (str, Path)) and raw in Path(caminho).resolve().parents:
+            raise AssertionError(f"teste tentou ler a pasta raw/ do projeto: {caminho}")
+        return ler_csv(caminho, *args, **kwargs)
+
+    monkeypatch.setattr(duckdb, "connect", conectar_guardado)
+    monkeypatch.setattr(Path, "open", abrir_guardado)
+    monkeypatch.setattr(pd, "read_csv", ler_csv_guardado)

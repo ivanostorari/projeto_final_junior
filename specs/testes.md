@@ -10,6 +10,10 @@ próprio banco temporário (`tmp_path`) com **dados inventados**, pequenos, em q
 escrito no `conftest.py`. Além disso, por ser dado sobre saúde mental: **nenhum texto de resposta real** aparece
 nos testes.
 
+**A regra é imposta por código.** Um teste passar não prova que ele é independente do banco. Por isso o `conftest.py` tem um guarda automático (`isolar_do_projeto`, `autouse`) que faz **falhar** qualquer teste que tente abrir `saude_mental.duckdb` ou ler `raw/` (via `duckdb.connect`, `Path.open` ou `pandas.read_csv`), e `test_isolamento.py` prova que o guarda funciona.
+
+**Unitários × integração.** Os testes de integração, que rodam o pipeline completo (CSV inventado → Bronze → Prata → Ouro, sempre em `tmp_path`), ficam em `test/integracao/` e têm o marcador `integracao`. `uv run pytest -m "not integracao"` roda só os unitários (187); `uv run pytest -m integracao` só a integração (31); `uv run pytest --cov` roda tudo (218) e é o comando oficial, o único que atinge a cobertura mínima, porque o orquestrador só é exercitado pela integração.
+
 ## Os dados inventados (`test/conftest.py`)
 
 Oito respostas (`r1`..`r8`) e seis países. Cada resposta cobre um caso de borda do dado real:
@@ -37,10 +41,11 @@ O ranking de países (mart 08) exige 20 respostas por país, então tem teste pr
 | `test_painel.py`       | formato brasileiro, grupo com menos de 20 respostas fora do gráfico (nota diz quem), receio × disposição em barras separadas, leitura somente leitura, nenhum cálculo no código |
 | `test_relatorio.py`    | HTML idêntico para os mesmos dados e a mesma data, ids fixos, rodapé com data                 |
 | `test_app.py`          | a página Streamlit abre sem exceção, mostra erro legível sem banco, botão recarrega           |
-| `test_executar.py`     | `executar.py`: sucesso publica o banco e escreve o resumo; falha sai com código 1 e não cria banco |
+| `test_isolamento.py`   | o guarda do `conftest.py` barra banco e `raw/` do projeto e deixa passar banco temporário e em memória |
+| `integracao/test_executar.py` | `executar.py`: sucesso publica o banco e escreve o resumo; falha sai com código 1 e não cria banco |
 | `test_contrato.py`     | cada violação do contrato dos CSVs (ausente, vazio, encoding, coluna, linha quebrada, repetida, chave) e sua severidade |
 | `test_qualidade.py`    | cada regra de qualidade passa no dado bom e falha no dado adulterado; conciliação entre camadas |
-| `test_orquestrador.py` | integração: pipeline completo, idempotência, falha no meio, entradas inválidas, bloqueio por qualidade, rastreabilidade e logs sem dado pessoal |
+| `integracao/test_orquestrador.py` | integração: pipeline completo, idempotência, falha no meio, entradas inválidas, bloqueio por qualidade, rastreabilidade e logs sem dado pessoal |
 | `test_ver_marts.py`    | imprime os dez marts (ou só os pedidos), mart inexistente e banco ausente saem com código 1   |
 | `test_conferir.py`     | a lógica de `conferir.py` (compara com o esperado, arredonda float, sai com 1 se divergir) sobre um banco inventado |
 

@@ -37,13 +37,13 @@ def test_tem_os_seis_cartoes_o_aviso_da_amostra_e_as_tres_faixas():
     assert html.count('class="cartao"') == 6
     assert "1.259" in html
     assert "amostra de quem quis responder" in html
-    assert html.count("<h2>") == 4  # três faixas de gráficos e "Sobre os dados"
+    assert html.count("<h2>") == 5  # três faixas de gráficos, "Dados completos" e "Sobre os dados"
     assert html.count('class="faixa"') == 3
 
 
 def test_menu_aponta_para_secoes_que_existem():
     html = relatorio.montar_html(dados_inventados(), AGORA)
-    for ancora in ("numeros", "quem", "empregador", "conversa", "sobre"):
+    for ancora in ("numeros", "quem", "empregador", "conversa", "dados", "sobre"):
         assert f'href="#{ancora}"' in html
         assert f'id="{ancora}"' in html
 
@@ -137,3 +137,49 @@ def test_nenhum_texto_dos_dados_consegue_fechar_o_script_da_pagina(monkeypatch):
     html = relatorio.montar_html(dados_inventados(), AGORA)
     assert html.count("</script>") == normal
     assert _dados_da_pagina(html)["g01"]["pontos"][0]["rotulo"] == "</script><b>x"
+
+
+def _painel_da_aba(html: str, mart: str) -> str:
+    inicio = html.index(f'id="painel-{mart}"')
+    fim = html.find('role="tabpanel"', inicio)
+    return html[inicio:] if fim == -1 else html[inicio:fim]
+
+
+def test_dados_completos_tem_uma_aba_e_uma_tabela_para_cada_um_dos_dez_marts():
+    html = relatorio.montar_html(dados_inventados(), AGORA)
+    assert html.count('role="tab"') == 10
+    assert html.count('role="tabpanel"') == 10
+    assert set(painel.MARTS) == {m for m, _, _ in relatorio.TABELAS}
+    for mart in painel.MARTS:
+        assert f'id="aba-{mart}"' in html
+        assert f'id="painel-{mart}"' in html
+
+
+def test_cada_tabela_tem_todas_as_linhas_do_mart_e_nenhuma_a_mais():
+    dados = dados_inventados()
+    html = relatorio.montar_html(dados, AGORA)
+    for mart in painel.MARTS:
+        assert _painel_da_aba(html, mart).count("<tr>") == len(dados[mart]) + 1, mart  # +1: o cabeçalho
+
+
+def test_mart_sem_grafico_aparece_nas_abas():
+    painel_historico = _painel_da_aba(relatorio.montar_html(dados_inventados(), AGORA), "historico_familiar")
+    assert "492" in painel_historico and "74,2%" in painel_historico and "<code>pct_tratamento</code>" in painel_historico
+
+
+def test_tabelas_usam_formato_brasileiro_e_aba_do_grupo_pequeno_mostra_o_percentual_do_mart():
+    html = relatorio.montar_html(dados_inventados(), AGORA)
+    assert "1.259" in _painel_da_aba(html, "consequencias_percebidas")
+    assert "78,6%" in _painel_da_aba(html, "tratamento_por_genero")  # grupo com 19: fora do gráfico, dentro do mart
+
+
+def test_celula_formata_nulo_como_traco_e_nunca_nan():
+    assert relatorio._celula("pct_tratamento", float("nan")) == ("dir", "—")
+    assert relatorio._celula("respondentes", 1259) == ("dir", "1.259")
+    assert relatorio._celula("faixa", "Até 24") == ("", "Até 24")
+    assert "nan" not in relatorio._celula("media", float("nan"))[1].lower()
+
+
+def test_ranking_de_paises_vem_ordenado_pela_posicao():
+    painel_paises = _painel_da_aba(relatorio.montar_html(dados_inventados(), AGORA), "ranking_paises")
+    assert painel_paises.index("United States") < painel_paises.index("Wakanda") < painel_paises.index("United Kingdom")

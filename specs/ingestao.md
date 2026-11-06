@@ -12,7 +12,8 @@ não corrige, não descarta. Executar: `uv run python -m pipeline.ingestao`.
 
 `survey.csv` está **byte a byte como foi baixado** (SHA-256 `3c4e3e16…db4`, 1.259 linhas + cabeçalho,
 27 colunas). A cópia usada veio de um espelho no GitHub (`alvin-98/mental-health-survey-2014`), que
-não declara licença nem origem; a fonte original é a OSMI. Isso é um risco assumido e está no README.
+não declara licença nem origem; a fonte original é a OSMI. A cópia foi conferida em 06/11/2026 contra o depósito
+oficial da OSMI no Figshare (mesmo tamanho e mesmo MD5); detalhes em `raw/ORIGEM.md` e no README.
 
 ## O que a pesquisa é (e não é)
 

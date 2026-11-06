@@ -12,7 +12,7 @@ Um **pipeline de dados** em Python + DuckDB que pega uma pesquisa pública sobre
 
 - **`raw/survey.csv`:** a pesquisa **Mental Health in Tech Survey 2014** da [OSMI (Open Sourcing Mental Illness)](https://www.osmihelp.org/research.html): **1.259 respostas** anônimas de pessoas que trabalham com tecnologia, 27 colunas, licença **CC BY-SA 3.0**.
 - **`raw/paises.csv`:** tabela de **250 países** (nome, continente, região da ONU) do pacote Python `country_converter` (MIT), usada para ligar cada resposta a um continente.
-- Detalhes, crédito, licença e o risco assumido (a cópia veio de um espelho no GitHub) estão em [Fonte e licença](#fonte-e-licença) e em `raw/ORIGEM.md`.
+- Detalhes, crédito, licença e a conferência da cópia contra o original estão em [Fonte e licença](#fonte-e-licença) e em `raw/ORIGEM.md`.
 
 ## Que perguntas de negócio ele responde (e onde está a resposta)
 
@@ -141,7 +141,7 @@ O arquivo `saude_mental.duckdb` é gerado pelo pipeline na raiz do projeto e nã
 | `survey.csv` | 1.259 respostas, 27 colunas, de 27/08/2014 a 01/02/2016 | [OSMI, Mental Health in Tech Survey](https://www.osmihelp.org/research.html) (link "Get raw data" da pesquisa de 2014) | **CC BY-SA 3.0** (Unported) para a pesquisa de 2014, segundo a [página de pesquisa da OSMI](https://www.osmihelp.org/research.html) (as de 2016 a 2021 são 4.0) |
 | `paises.csv` | 250 países com continente e região da ONU | pacote Python [`country_converter`](https://github.com/IndEcol/country_converter) 1.3.2, gerado por `preparar_paises.py` | MIT |
 
-**Risco assumido:** a cópia de `survey.csv` usada aqui veio de um espelho no GitHub (`alvin-98/mental-health-survey-2014`), porque o site da OSMI e outros repositórios de dados estavam inacessíveis para download no ambiente em que o projeto foi construído. O espelho não declara licença nem origem. O arquivo está **como foi baixado** (SHA-256 `3c4e3e16917f74b5e219ba01caecd09f9dc464c4848becdd018c9442d627abb4`), e o texto das 27 perguntas foi conferido contra a [tabela de perguntas do UZH DataTalk](https://datatalkturk.ifi.uzh.ch/datatalkturk/html/dataset_info_elements/mental_health/question_overview_table.html). **Antes de publicar:** baixe o arquivo original no site da OSMI ("Get raw data"), compare o SHA-256 e confira o texto da licença. A CC BY-SA exige dar o crédito à OSMI e manter a mesma licença em adaptações do **dado**.
+**Origem da cópia e conferência:** a cópia de `survey.csv` veio de um espelho no GitHub (`alvin-98/mental-health-survey-2014`), que não declara licença nem origem. O arquivo está **como foi baixado** (SHA-256 `3c4e3e16917f74b5e219ba01caecd09f9dc464c4848becdd018c9442d627abb4`). **Conferido em 06/11/2026** contra o depósito oficial da OSMI no Figshare ([OSMI Mental Health in Tech Survey](https://figshare.com/articles/dataset/OSMI_Mental_Health_in_Tech_Survey/5579458), arquivo `mental-heath-in-tech-2014.csv`): mesmo tamanho (303.684 bytes) e mesmo MD5 (`6e7bf171a9f00f5ec306e897bceaecb1`), o que mostra que o conteúdo é idêntico. O texto das 27 perguntas foi conferido contra a [tabela de perguntas do UZH DataTalk](https://datatalkturk.ifi.uzh.ch/datatalkturk/html/dataset_info_elements/mental_health/question_overview_table.html). **Sobre a licença:** o depósito no Figshare declara CC BY 4.0, enquanto a página de pesquisa da OSMI indica CC BY-SA 3.0 para a pesquisa de 2014. O projeto segue a mais restritiva (CC BY-SA 3.0), que exige dar o crédito à OSMI e manter a mesma licença em adaptações do **dado**.
 
 ## O grão de cada tabela
 
@@ -385,7 +385,7 @@ Dados: pesquisa da OSMI de 2014 (CC BY-SA 3.0; crédito: Open Sourcing Mental Il
 
 Problemas que apareceram durante a construção, como cada um foi descoberto e o que mudou.
 
-1. **Fonte.** Seis fontes de dados (OpenML, Figshare, Mendeley, Hugging Face, Zenodo e o site da OSMI) estavam inacessíveis no ambiente de construção. Sobrou um espelho no GitHub, sem licença nem origem declaradas. Por isso o arquivo precisa ser conferido contra o original (veja "Ainda pendente").
+1. **Fonte.** O download direto de seis fontes (OpenML, Figshare, Mendeley, Hugging Face, Zenodo e o site da OSMI) estava bloqueado no ambiente de construção. Sobrou um espelho no GitHub, sem licença nem origem declaradas. *Conferido depois:* o arquivo é idêntico (tamanho e MD5) ao depósito oficial da OSMI no Figshare, lido pela API do Figshare.
 2. **Chave de país.** O código ISO2 não serve para ligar as tabelas. *Descoberto inspecionando o arquivo do pacote:* o Reino Unido vem como `^GB$|^UK$` (uma expressão regular) e a Namíbia como `NA`, igual ao marcador de nulo da pesquisa. A ligação é pelo nome.
 3. **"Sim" com dois sentidos (mart 07).** Uma coluna `pct_sim` juntava *receio* de consequência e *disposição* de falar numa entrevista, perguntas em que "Sim" quer dizer o oposto. *Descoberto relendo os números* (saúde mental 23,2% × 3,5%) e o texto das perguntas. Corrigido com colunas separadas (`falaria_*`).
 4. **Licença.** A spec dizia "CC BY-SA 4.0" sem verificação. *Conferido* na página da OSMI: a de 2014 é **CC BY-SA 3.0** (as de 2016 em diante é que são 4.0). Corrigido aqui e na spec.
@@ -399,6 +399,8 @@ Problemas que apareceram durante a construção, como cada um foi descoberto e o
 ## O que foi conferido
 
 - `uv run pytest --cov` e `uv run ruff check .` no Windows (PowerShell): **149 testes passando**, cobertura de **98%** e `ruff` sem erros.
+- `survey.csv` conferido contra o depósito oficial da OSMI no Figshare: mesmo tamanho (303.684 bytes) e mesmo MD5.
+- Relatório HTML aberto em tela de celular (iPhone 13 e 360 px de largura, no Chromium simulado) e em tema escuro: sem rolagem lateral, os 8 gráficos aparecem, o clique na barra abre o detalhe e o botão Voltar funciona.
 - Em um clone novo do repositório público, numa pasta fora do projeto: `uv sync`, `executar.py` (10 marts, 52 linhas), `conferir.py` (**31 de 31 conferidos**), `pytest` e `ruff`.
 
-**Ainda pendente:** comparar o SHA-256 do `survey.csv` com o do arquivo original da OSMI e conferir o painel em celular e em outros navegadores.
+**Ainda pendente:** conferir o relatório em Safari e Firefox reais e em celulares de verdade (só foi testado em simulação no Chromium).

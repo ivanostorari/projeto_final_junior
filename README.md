@@ -379,7 +379,7 @@ Todos os erros abaixo foram reproduzidos neste projeto.
 
 ## Licença e créditos
 
-Dados: pesquisa da OSMI de 2014 (CC BY-SA 3.0; crédito: Open Sourcing Mental Illness, osmihelp.org) e tabela de países do `country_converter` (MIT). Código: licença ainda não definida (não há arquivo `LICENSE`).
+Dados: pesquisa da OSMI de 2014 (CC BY-SA 3.0; crédito: Open Sourcing Mental Illness, osmihelp.org) e tabela de países do `country_converter` (MIT). Código: licença MIT, em [`LICENSE`](LICENSE). A licença do código não muda a dos dados: a pesquisa continua sob CC BY-SA 3.0 e quem reutiliza o dado mantém o crédito à OSMI.
 
 ## Onde a IA errou ou assumiu (e como foi descoberto)
 

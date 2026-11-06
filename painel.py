@@ -19,6 +19,7 @@ Spec completa em specs/painel.md. Resumo das regras e dos motivos:
 7. Sem conclusão pronta nas notas: elas dizem o que foi medido, o denominador e o limite.
 """
 
+import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -42,7 +43,7 @@ MARTS = [
     "kpis",
 ]
 
-COR = "#5b6fb5"
+COR = "#6366f1"
 MIN_AMOSTRA = 20
 
 CONTINENTES = {
@@ -170,6 +171,11 @@ def _base(fig: go.Figure, titulo: str, altura: int = 340) -> go.Figure:
     return fig
 
 
+def _quebrar(rotulo: str, largura: int = 24) -> str:
+    """Quebra rótulo comprido do eixo em linhas, para o Plotly não cortar o começo do texto."""
+    return "<br>".join(textwrap.wrap(str(rotulo), largura)) or str(rotulo)
+
+
 def _barras_horizontais(rotulos, valores, textos, titulo, eixo_x, maximo=None, hover=None) -> go.Figure:
     fig = go.Figure(
         go.Bar(
@@ -185,6 +191,10 @@ def _barras_horizontais(rotulos, valores, textos, titulo, eixo_x, maximo=None, h
         )
     )
     fig.update_yaxes(autorange="reversed")  # o primeiro da lista fica em cima
+    # Mesmo texto no eixo, só quebrado em linhas; o valor de y (usado nos testes e no hover) não muda.
+    fig.update_yaxes(
+        tickmode="array", tickvals=list(rotulos), ticktext=[_quebrar(r) for r in rotulos], automargin=True
+    )
     fig.update_xaxes(title_text=eixo_x, rangemode="tozero")
     if maximo is not None:
         fig.update_xaxes(range=[0, maximo])

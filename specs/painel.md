@@ -34,6 +34,17 @@ troca o nome de uma coluna por um rótulo, formata texto e desenha. Número novo
    empregador): apoio, tamanho da empresa, países; faixa 4 (falar abertamente): interferência no trabalho,
    receio × disposição. Oito gráficos.
 10. **Relatório HTML.** Mesmas funções de gráfico; `div_id` fixo (`g01`...); rodapé com data e hora de geração.
+    A página é só apresentação e não muda nenhum número: cabeçalho com menu, seis cartões, aviso da amostra, as três
+    faixas de gráficos e a seção "Sobre os dados". Layout fluido (grade que se reorganiza em computador, tablet e
+    celular), tema claro e escuro conforme o sistema, sem biblioteca de CSS e com poucas linhas de JS (animação de
+    entrada e item ativo do menu). O título de cada gráfico sai de dentro do Plotly e vai para a página, porque o
+    Plotly não quebra título comprido e o corta no celular. Sem internet o Plotly não carrega: a página avisa.
+    Os textos de apoio dizem o que está medido, nunca o que o resultado "prova" (decisão 8).
+    **Detalhe por clique:** clicar numa barra abre a tela de detalhe daquele item (rótulo, valor, a dica do gráfico
+    e a lista de todos os itens do gráfico, com o clicado destacado). A tela tem **Voltar** (volta ao mesmo ponto da
+    página; o botão voltar do navegador e a tecla Esc fazem o mesmo) e **Início** (volta ao topo); o menu também
+    tem **Início**. Os dados dessa tela são cópia do que o gráfico já desenha, guardados num JSON dentro da página:
+    nenhum número novo, nenhum cálculo.
 11. **Erro.** Sem `saude_mental.duckdb`, ou faltando qualquer mart: mensagem com o comando e para.
 12. **Aviso fixo na página** sobre a amostra e sobre o que o painel não é (diagnóstico). O texto está em
     `painel.AVISO` e aparece no app e no relatório.
@@ -46,3 +57,5 @@ troca o nome de uma coluna por um rótulo, formata texto e desenha. Número novo
 - Busca por `groupby`, `.sum(`, `.mean(`, `.merge(` em `painel.py`, `app.py` e `relatorio.py` não encontra nada.
 - Com o painel de pé, `uv run python -m pipeline.marts` roda sem erro de lock.
 - `relatorio.html` abre com dois cliques, sem Python, e tem menos de 200 KB.
+- No relatório, clicar numa barra abre o detalhe; **Voltar** devolve a página à mesma posição de rolagem e **Início** leva ao topo.
+- No relatório, nenhum rótulo é cortado e a página não rola para o lado em 1440, 900 e 390 pixels de largura, nos temas claro e escuro.

@@ -12,7 +12,12 @@ Nada nesta pasta foi alterado pelo projeto: a camada `raw` é a cópia do que ch
 - **De onde esta cópia veio:** do espelho `alvin-98/mental-health-survey-2014` no GitHub (o site da OSMI não estava
   acessível no ambiente em que o projeto foi construído). O espelho não declara licença nem origem.
 - **SHA-256 do arquivo:** `3c4e3e16917f74b5e219ba01caecd09f9dc464c4848becdd018c9442d627abb4`
-  (confira com `sha256sum raw/survey.csv`; compare com o arquivo baixado do site da OSMI).
+  (confira com `sha256sum raw/survey.csv`).
+- **Conferência contra o original (06/11/2026):** o arquivo é idêntico ao `mental-heath-in-tech-2014.csv` do depósito
+  oficial da OSMI no Figshare (https://figshare.com/articles/dataset/OSMI_Mental_Health_in_Tech_Survey/5579458): tamanho 303.684 bytes e MD5 `6e7bf171a9f00f5ec306e897bceaecb1`
+  (conferir com `md5sum raw/survey.csv`). O MD5 é o que a API do Figshare lista para o arquivo.
+- **Observação sobre a licença:** o depósito no Figshare declara CC BY 4.0; a página de pesquisa da OSMI indica CC BY-SA 3.0
+  para a pesquisa de 2014. O projeto segue a mais restritiva (CC BY-SA 3.0).
 - **Aviso:** é dado sobre saúde mental, anonimizado pela OSMI. Não tente identificar pessoas.
 
 ## `paises.csv`

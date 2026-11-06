@@ -14,3 +14,8 @@ htmlcov/
 # Segredos e configuração local
 .env
 .streamlit/secrets.toml
+
+# Bancos de dados locais
+*.db
+*.duckdb
+*.parquet

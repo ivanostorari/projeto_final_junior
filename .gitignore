@@ -1,0 +1,16 @@
+# Ambiente virtual
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Ferramentas
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Segredos e configuração local
+.env
+.streamlit/secrets.toml

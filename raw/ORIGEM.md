@@ -5,6 +5,7 @@ Nada nesta pasta foi alterado pelo projeto: a camada `raw` é a cópia do que ch
 ## `survey.csv`
 
 - **O que é:** Mental Health in Tech Survey 2014, 1.259 respostas (1.260 linhas com o cabeçalho), 27 colunas.
+- **Fonte primária:** depósito oficial da OSMI no Figshare, <https://figshare.com/articles/dataset/OSMI_Mental_Health_in_Tech_Survey/5579458>, arquivo `mental-heath-in-tech-2014.csv`.
 - **Autoria e crédito:** Open Sourcing Mental Illness (OSMI), <https://www.osmihelp.org/research.html>
   (link "Get raw data" da pesquisa de 2014).
 - **Licença:** Creative Commons Attribution-ShareAlike 3.0 Unported (CC BY-SA 3.0), conforme a página de pesquisa
@@ -15,7 +16,7 @@ Nada nesta pasta foi alterado pelo projeto: a camada `raw` é a cópia do que ch
   (confira com `sha256sum raw/survey.csv`).
 - **Conferência contra o original (06/11/2026):** o arquivo é idêntico ao `mental-heath-in-tech-2014.csv` do depósito
   oficial da OSMI no Figshare (https://figshare.com/articles/dataset/OSMI_Mental_Health_in_Tech_Survey/5579458): tamanho 303.684 bytes e MD5 `6e7bf171a9f00f5ec306e897bceaecb1`
-  (conferir com `md5sum raw/survey.csv`). O MD5 é o que a API do Figshare lista para o arquivo.
+  (conferir com `md5sum raw/survey.csv`). O MD5 é o que a API do Figshare lista para o arquivo. O SHA-256 do arquivo baixado direto do Figshare em 06/11/2026 também é idêntico ao do repositório.
 - **Observação sobre a licença:** o depósito no Figshare declara CC BY 4.0; a página de pesquisa da OSMI indica CC BY-SA 3.0
   para a pesquisa de 2014. O projeto segue a mais restritiva (CC BY-SA 3.0).
 - **Data de obtenção:** o arquivo entrou no repositório em 06/11/2026 (commit `2ab0e92`) e foi conferido contra o original em 06/11/2026.
